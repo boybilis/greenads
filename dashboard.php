@@ -1116,13 +1116,13 @@ if (!isset($_SESSION['user_type']) ||
               <div class="card-footer clearfix">
 			  
 			  
-               <?php if ($_SESSION['user_type'] !== 'Manager') { ?>
+               <?php if (in_array($_SESSION['user_type'] ?? '', ['Admin', 'Inventory'], true)) { ?>
 
 <button class="btn btn-primary" data-toggle="modal" data-target="#productModal">
   Add Product
 </button>
 
-<?php } else {?>
+<?php } elseif (($_SESSION['user_type'] ?? '') === 'Manager') {?>
 <button class="btn btn-warning" data-toggle="modal" data-target="#itemRequestModal">
   Request Materials for Purchase
 </button>
@@ -2219,7 +2219,7 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <div class="col-md-4">
               <div class="form-group">
                 <label>Quantity</label>
-                <input type="number" class="form-control" name="quantity" id="quantity" value="0">
+                <input type="number" class="form-control" name="quantity" id="quantity" value="0" <?= (isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'Purchasing') ? 'readonly' : '' ?>>
               </div>
             </div>
 
@@ -3695,6 +3695,7 @@ $(document).ready(function() {
 <script>
 $(document).ready(function () {
  const canManagePricing = <?= $canManagePricing ? 'true' : 'false' ?>;
+ const isPurchasingUser = "<?= $_SESSION['user_type'] ?? '' ?>" === 'Purchasing';
 
  function buildSkuPreview() {
     if ($('#id').val()) {
@@ -3939,6 +3940,7 @@ $('#material_name, #color, #gsm').on('input blur', buildSkuPreview);
                 $('#gsm').val(item.gsm || '');
                 $('#description').val(item.description || '');
                 $('#quantity').val(item.quantity || 0);
+                $('#quantity').prop('readonly', isPurchasingUser);
                 $('#unit').val(item.unit || '');
                 $('#unit_price').val(item.unit_price || '0.00');
                 $('#unit_price').prop('readonly', !canManagePricing);
@@ -3958,6 +3960,9 @@ $('#material_name, #color, #gsm').on('input blur', buildSkuPreview);
         $('#productModalLabel').text('Add Material');
         $('#productForm')[0].reset();
         $('#id').val('');
+        if (isPurchasingUser) {
+            $('#quantity').val('0').prop('readonly', true);
+        }
         if (!canManagePricing) {
             $('#unit_price').val('0.00');
         }
@@ -3966,6 +3971,9 @@ $('#material_name, #color, #gsm').on('input blur', buildSkuPreview);
 
     if (!canManagePricing) {
         $('#unit_price').prop('readonly', true);
+    }
+    if (isPurchasingUser) {
+        $('#quantity').prop('readonly', true);
     }
    
 });
@@ -4220,11 +4228,7 @@ $("#logoutBtn").on("click", function(e) {
     dataType: "json",
     success: function(res) {
       if (res.status === "success") {
-        toastr.success("Logged out successfully");
-
-        setTimeout(function () {
-          window.location.href = "index.html";
-        }, 1000);
+        window.location.href = "index.html";
       }
     },
     error: function() {

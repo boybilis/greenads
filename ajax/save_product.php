@@ -5,6 +5,7 @@ include_once('audit_helper.php');
 
 $userType = $_SESSION['user_type'] ?? '';
 $canManagePricing = in_array($userType, ['Admin', 'Purchasing'], true);
+$isPurchasingOnly = ($userType === 'Purchasing');
 
 $pid=$_POST['id'];
 $sku=trim($_POST['sku'] ?? '');
@@ -90,6 +91,9 @@ if($pid!=""){
         if (!$canManagePricing) {
             $set['unit_price'] = $before['unit_price'] ?? 0;
         }
+        if ($isPurchasingOnly) {
+            $set['quantity'] = $before['quantity'] ?? 0;
+        }
 
 		$where   =   array(	
 			'id'=>$pid
@@ -105,7 +109,7 @@ if($pid!=""){
 				'color' => $_POST['color'] ?? '',
 				'gsm' => $_POST['gsm'] ?? '',
 				'description' => $_POST['description'] ?? '',
-				'quantity' => $_POST['quantity'] ?? '',
+				'quantity' => $set['quantity'] ?? ($_POST['quantity'] ?? ''),
 				'unit' => $_POST['unit'] ?? '',
 				'unit_price' => $set['unit_price'] ?? ($_POST['unit_price'] ?? ''),
 				'location' => $_POST['location'] ?? '',
@@ -117,6 +121,11 @@ if($pid!=""){
 	
 }else{
 	
+	if($userType === 'Purchasing'){
+		echo 0;
+		exit;
+	}
+
 	if($sku==""){
 		$sku = generate_sku($_POST['material_name'] ?? '', $_POST['color'] ?? '', $_POST['gsm'] ?? '');
 		$_POST['sku'] = $sku;
@@ -135,6 +144,9 @@ if($pid!=""){
 
         if (!$canManagePricing) {
             $data['unit_price'] = 0;
+        }
+        if ($isPurchasingOnly) {
+            $data['quantity'] = 0;
         }
 		$insert     =   $db->insert('tbl_items',$data);
 		if($insert){ audit_log($pdo, 'CREATE', 'Items', $sku, 'Added item ' . ($_POST['material_name'] ?? '') . '.'); echo 1; } else { echo 0; }
