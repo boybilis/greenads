@@ -5,9 +5,9 @@ include_once('audit_helper.php');
 
 header('Content-Type: application/json');
 
-if (!in_array($_SESSION['user_type'] ?? '', ['Admin', 'Inventory'], true)) {
+if (!in_array($_SESSION['user_type'] ?? '', ['Admin', 'Inventory', 'Purchasing'], true)) {
     http_response_code(403);
-    echo json_encode(['status' => 'error', 'message' => 'Only Admin and Inventory users can encode PR items.']);
+    echo json_encode(['status' => 'error', 'message' => 'Only Admin, Inventory, and Purchasing users can encode PR items.']);
     exit;
 }
 
@@ -16,6 +16,7 @@ $poItemId = (int)($_POST['po_item_id'] ?? 0);
 $unitPrice = (float)($_POST['unit_price'] ?? 0);
 $inventorySku = trim($_POST['inventory_sku'] ?? '');
 $createdBy = $_SESSION['username'] ?? $_SESSION['user_code'];
+$canManagePricing = (($_SESSION['user_type'] ?? '') === 'Purchasing');
 
 if ($prId <= 0 || $poItemId <= 0) {
     echo json_encode(['status' => 'error', 'message' => 'Invalid item reference.']);
@@ -91,7 +92,7 @@ try {
     }
 
     $itemStmt = $pdo->prepare("
-        SELECT sku, material_name, material_type, color, quantity, unit
+        SELECT sku, material_name, material_type, color, quantity, unit, unit_price
         FROM tbl_items
         WHERE sku = ?
         FOR UPDATE
@@ -110,6 +111,10 @@ try {
 
     if ($item['unit'] !== $targetUnit) {
         throw new RuntimeException('Unit mismatch for ' . $targetSku . '. Inventory unit is ' . $item['unit'] . '.');
+    }
+
+    if (!$canManagePricing) {
+        $unitPrice = (float)$item['unit_price'];
     }
 
     $dup = $pdo->prepare("
@@ -146,12 +151,21 @@ try {
         $createdBy
     ]);
 
-    $update = $pdo->prepare("
-        UPDATE tbl_items
-        SET quantity = quantity + ?, unit_price = ?
-        WHERE sku = ?
-    ");
-    $update->execute([$quantity, $unitPrice, $targetSku]);
+    if ($canManagePricing) {
+        $update = $pdo->prepare("
+            UPDATE tbl_items
+            SET quantity = quantity + ?, unit_price = ?
+            WHERE sku = ?
+        ");
+        $update->execute([$quantity, $unitPrice, $targetSku]);
+    } else {
+        $update = $pdo->prepare("
+            UPDATE tbl_items
+            SET quantity = quantity + ?
+            WHERE sku = ?
+        ");
+        $update->execute([$quantity, $targetSku]);
+    }
 
     if ($isRequestedSku && $targetSku !== $row['sku']) {
         $updatePoItem = $pdo->prepare("

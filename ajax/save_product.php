@@ -3,6 +3,9 @@ session_start();
 include_once('config.php');
 include_once('audit_helper.php');
 
+$userType = $_SESSION['user_type'] ?? '';
+$canManagePricing = ($userType === 'Purchasing');
+
 $pid=$_POST['id'];
 $sku=trim($_POST['sku'] ?? '');
 
@@ -84,6 +87,10 @@ if($pid!=""){
 	//}
 }
 
+        if (!$canManagePricing) {
+            $set['unit_price'] = $before['unit_price'] ?? 0;
+        }
+
 		$where   =   array(	
 			'id'=>$pid
 			);
@@ -100,7 +107,7 @@ if($pid!=""){
 				'description' => $_POST['description'] ?? '',
 				'quantity' => $_POST['quantity'] ?? '',
 				'unit' => $_POST['unit'] ?? '',
-				'unit_price' => $_POST['unit_price'] ?? '',
+				'unit_price' => $set['unit_price'] ?? ($_POST['unit_price'] ?? ''),
 				'location' => $_POST['location'] ?? '',
 				'reorder_level' => $_POST['reorder_level'] ?? ''
 			];
@@ -125,6 +132,10 @@ if($pid!=""){
  
 	}
 }
+
+        if (!$canManagePricing) {
+            $data['unit_price'] = 0;
+        }
 		$insert     =   $db->insert('tbl_items',$data);
 		if($insert){ audit_log($pdo, 'CREATE', 'Items', $sku, 'Added item ' . ($_POST['material_name'] ?? '') . '.'); echo 1; } else { echo 0; }
 	}else{

@@ -21,6 +21,7 @@ $receiptNo = trim($_POST['receipt_no'] ?? '');
 $receiptDate = trim($_POST['receipt_date'] ?? '');
 $poCode = trim($_POST['po_code'] ?? '');
 $createdBy = $_SESSION['username'] ?? $_SESSION['user_code'];
+$canManagePricing = (($_SESSION['user_type'] ?? '') === 'Purchasing');
 
 if ($sku === '' || $quantity <= 0 || $unit === '' || $receiptNo === '' || $receiptDate === '') {
     echo json_encode([
@@ -63,7 +64,7 @@ try {
     $pdo->beginTransaction();
 
     $stmt = $pdo->prepare("
-        SELECT sku, material_name, quantity, unit
+        SELECT sku, material_name, quantity, unit, unit_price
         FROM tbl_items
         WHERE sku = ?
         FOR UPDATE
@@ -77,6 +78,10 @@ try {
 
     if ($item['unit'] !== $unit) {
         throw new RuntimeException('Selected unit does not match the existing item unit.');
+    }
+
+    if (!$canManagePricing) {
+        $unitPrice = (float)$item['unit_price'];
     }
 
     $stockBefore = (float)$item['quantity'];
@@ -112,12 +117,21 @@ try {
         $createdBy
     ]);
 
-    $update = $pdo->prepare("
-        UPDATE tbl_items
-        SET quantity = quantity + ?, unit_price = ?
-        WHERE sku = ?
-    ");
-    $update->execute([$quantity, $unitPrice, $sku]);
+    if ($canManagePricing) {
+        $update = $pdo->prepare("
+            UPDATE tbl_items
+            SET quantity = quantity + ?, unit_price = ?
+            WHERE sku = ?
+        ");
+        $update->execute([$quantity, $unitPrice, $sku]);
+    } else {
+        $update = $pdo->prepare("
+            UPDATE tbl_items
+            SET quantity = quantity + ?
+            WHERE sku = ?
+        ");
+        $update->execute([$quantity, $sku]);
+    }
 
     $pdo->commit();
 
