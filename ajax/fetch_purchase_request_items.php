@@ -3,6 +3,12 @@ session_start();
 include_once('config.php');
 
 header('Content-Type: application/json');
+if (!isset($_SESSION['user_code'])) {
+    http_response_code(401);
+    echo json_encode(['data' => [], 'message' => 'Unauthorized.']);
+    exit;
+}
+
 
 try {
     $columns = $pdo->query("SHOW COLUMNS FROM tbl_items")->fetchAll(PDO::FETCH_COLUMN);
@@ -67,7 +73,7 @@ try {
     http_response_code(500);
     echo json_encode([
         'status' => 'error',
-        'message' => $e->getMessage(),
+        'message' => "Request failed.",
         'data' => []
     ]);
 }

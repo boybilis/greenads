@@ -61,6 +61,6 @@ try {
     http_response_code(500);
     echo json_encode([
         'data' => [],
-        'error' => $e->getMessage()
+        'error' => "Request failed."
     ]);
 }

@@ -90,6 +90,6 @@ try {
             'count' => 0,
             'grand_total' => '0.00'
         ],
-        'message' => $e->getMessage()
+        'message' => "Request failed."
     ]);
 }

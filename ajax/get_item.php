@@ -3,6 +3,12 @@ session_start();
 include_once('config.php');
 
 header('Content-Type: application/json');
+if (!isset($_SESSION['user_code'])) {
+    http_response_code(401);
+    echo json_encode(['data' => [], 'message' => 'Unauthorized.']);
+    exit;
+}
+
 
 $id = (int)($_GET['id'] ?? 0);
 

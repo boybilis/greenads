@@ -41,6 +41,6 @@ try {
     echo json_encode(['status' => 'success', 'message' => 'PR request marked as encoded.']);
 } catch (Exception $e) {
     http_response_code(500);
-    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+    echo json_encode(['status' => 'error', 'message' => "Request failed."]);
 }
 ?>

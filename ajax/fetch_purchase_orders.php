@@ -4,6 +4,12 @@ include_once('config.php');
 
 header('Content-Type: application/json');
 
+if (!isset($_SESSION['user_code'])) {
+    http_response_code(401);
+    echo json_encode(['data' => [], 'message' => 'Unauthorized.']);
+    exit;
+}
+
 try {
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS tbl_purchase_orders (
@@ -100,9 +106,10 @@ try {
 
     echo json_encode(['data' => $data]);
 } catch (Exception $e) {
+    error_log('fetch_purchase_orders failed.');
     http_response_code(500);
     echo json_encode([
         'data' => [],
-        'message' => $e->getMessage()
+        'message' => 'Request failed.'
     ]);
 }

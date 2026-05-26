@@ -3,6 +3,12 @@ session_start();
 include_once('config.php');
 
 header('Content-Type: application/json');
+if (!isset($_SESSION['user_code'])) {
+    http_response_code(401);
+    echo json_encode(['data' => [], 'message' => 'Unauthorized.']);
+    exit;
+}
+
 
 try {
     $stmt = $pdo->query("
@@ -19,7 +25,7 @@ try {
     http_response_code(500);
     echo json_encode([
         'status' => 'error',
-        'message' => $e->getMessage(),
+        'message' => "Request failed.",
         'data' => []
     ]);
 }

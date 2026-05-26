@@ -69,6 +69,6 @@ try {
     echo json_encode(['status' => 'success', 'message' => 'User updated successfully.']);
 } catch (Exception $e) {
     http_response_code(500);
-    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+    echo json_encode(['status' => 'error', 'message' => "Request failed."]);
 }
 ?>

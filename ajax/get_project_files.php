@@ -1,7 +1,18 @@
 <?php
+session_start();
 require_once 'config.php';
 
-$proj_code = $_POST['proj_code'];
+if (!isset($_SESSION['user_code'])) {
+    http_response_code(401);
+    echo "Unauthorized.";
+    exit;
+}
+
+$proj_code = trim((string)($_POST['proj_code'] ?? ''));
+if ($proj_code === '') {
+    echo "No files uploaded.";
+    exit;
+}
 
 $sql = "SELECT * FROM tbl_project_files WHERE proj_code = :proj_code ORDER BY uploaded_at DESC";
 $stmt = $pdo->prepare($sql);
@@ -16,7 +27,7 @@ if (!$files) {
 
 foreach ($files as $f) {
 
-   $path ="../ga_p/proj_files/" . $f['file_path'];
+   $path = "../proj_files/" . $f['file_path'];
 
     echo "<div class='mb-2 border p-2'>";
 

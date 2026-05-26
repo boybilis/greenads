@@ -3,6 +3,12 @@ session_start();
 include_once('config.php');
 
 header('Content-Type: application/json');
+if (!isset($_SESSION['user_code'])) {
+    http_response_code(401);
+    echo json_encode(['data' => [], 'message' => 'Unauthorized.']);
+    exit;
+}
+
 
 $prId = (int)($_GET['pr_id'] ?? 0);
 //$prId = 1;
@@ -76,6 +82,6 @@ while ($row = $itemStmt->fetch(PDO::FETCH_ASSOC)) {
     http_response_code(500);
     echo json_encode([
         'status' => 'error',
-        'message' => $e->getMessage()
+        'message' => "Request failed."
     ]);
 }

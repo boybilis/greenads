@@ -142,10 +142,12 @@ class Database{
      
     public function getAllRecords($tableName, $fields='*', $cond='', $orderBy='', $limit='')
     {
-        //echo "SELECT  $tableName.$fields FROM $tableName WHERE 1 ".$cond." ".$orderBy." ".$limit;
-        //print "<br>SELECT $fields FROM $tableName WHERE 1 ".$cond." ".$orderBy." ".$limit;
+        $this->assertSafeSqlFragment($tableName, true);
+        $this->assertSafeSqlFragment($fields);
+        $this->assertSafeSqlFragment($cond);
+        $this->assertSafeSqlFragment($orderBy);
+        $this->assertSafeSqlFragment($limit);
         $stmt = $this->pdo->prepare("SELECT $fields FROM $tableName WHERE 1 ".$cond." ".$orderBy." ".$limit);
-        //print "SELECT $fields FROM $tableName WHERE 1 ".$cond." ".$orderBy." " ;
         $stmt->execute();
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         return $rows;
@@ -153,7 +155,7 @@ class Database{
      
     public function getRecFrmQry($query)
     {
-        //echo $query;
+        $this->assertSafeSqlFragment($query);
         $stmt = $this->pdo->prepare($query);
         $stmt->execute();
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -239,6 +241,7 @@ class Database{
      
     public function deleteQry($query)
     {
+        $this->assertSafeSqlFragment($query);
         $stmt = $this->pdo->prepare($query);
         $stmt->execute();
     }
@@ -305,6 +308,22 @@ class Database{
         }
       }
       return $arr;
+    }
+
+    protected function assertSafeSqlFragment($sql, $identifierOnly = false)
+    {
+        $value = (string)$sql;
+
+        if ($identifierOnly) {
+            if (!preg_match('/^[A-Za-z0-9_]+$/', $value)) {
+                throw new \InvalidArgumentException('Invalid SQL identifier.');
+            }
+            return;
+        }
+
+        if (preg_match('/(;|--|\/\*|\*\/)/', $value)) {
+            throw new \InvalidArgumentException('Unsafe SQL fragment detected.');
+        }
     }
      
      

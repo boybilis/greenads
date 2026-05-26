@@ -160,6 +160,6 @@ try {
 } catch (Exception $e) {
     http_response_code(500);
     header('Content-Type: text/plain; charset=utf-8');
-    echo 'PDF download failed: ' . $e->getMessage();
+    echo 'PDF download failed: ' . "Request failed.";
 }
 ?>

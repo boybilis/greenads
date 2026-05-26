@@ -30,6 +30,30 @@ if ($or_date == '' || $dept_code == '' || $proj_code == '' || empty($items)) {
     exit;
 }
 
+try {
+    $colExists = $conn->query("SHOW COLUMNS FROM tbl_project LIKE 'proj_approval_status'");
+    if ($colExists && $colExists->num_rows > 0) {
+        $approvalStmt = $conn->prepare("SELECT COALESCE(proj_approval_status, 1) AS approval_status FROM tbl_project WHERE proj_code = ? LIMIT 1");
+        $approvalStmt->bind_param("s", $proj_code);
+        $approvalStmt->execute();
+        $approvalRes = $approvalStmt->get_result();
+        $approvalRow = $approvalRes->fetch_assoc();
+
+        if (!$approvalRow) {
+            echo json_encode(["status" => "error", "message" => "Project not found."]);
+            exit;
+        }
+
+        if ((int)$approvalRow['approval_status'] !== 1) {
+            echo json_encode(["status" => "error", "message" => "Project is pending Admin approval. Material Request is not allowed yet."]);
+            exit;
+        }
+    }
+} catch (Exception $e) {
+    echo json_encode(["status" => "error", "message" => "Request failed."]);
+    exit;
+}
+
 $conn->begin_transaction();
 
 try {
@@ -212,7 +236,7 @@ try {
 
     echo json_encode([
         "status" => "error",
-        "message" => $e->getMessage()
+        "message" => "Request failed."
     ]);
     exit;
 }

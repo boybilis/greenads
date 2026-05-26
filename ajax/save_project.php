@@ -4,9 +4,42 @@ require_once('config.php');
 
 header('Content-Type: application/json');
 
+if (!isset($_SESSION['user_code'])) {
+    http_response_code(401);
+    echo json_encode([
+        'status' => 'error',
+        'message' => 'Unauthorized.'
+    ]);
+    exit;
+}
+
+if (!in_array($_SESSION['user_type'] ?? '', ['Admin', 'Manager'], true)) {
+    http_response_code(403);
+    echo json_encode([
+        'status' => 'error',
+        'message' => 'Only Admin or Manager can create projects.'
+    ]);
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     try {
+        $columns = $pdo->query("SHOW COLUMNS FROM tbl_project")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('proj_approval_status', $columns, true)) {
+            $pdo->exec("ALTER TABLE tbl_project ADD proj_approval_status TINYINT(1) NOT NULL DEFAULT 1");
+        }
+
+        $creatorType = $_SESSION['user_type'] ?? '';
+        $approvalStatus = $creatorType === 'Manager' ? 0 : 1;
+        $projectManagerCode = trim((string)($_POST['proj_mgr'] ?? ''));
+        if ($creatorType === 'Manager') {
+            $projectManagerCode = $_SESSION['user_code'];
+        }
+
+        if ($projectManagerCode === '') {
+            throw new Exception('Project manager is required.');
+        }
 
         // =========================
         // AUTO-GENERATE PROJECT CODE (JAN2026-001)
@@ -43,7 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         // =========================
         $data = [
             'proj_code'   => $proj_code,
-            'proj_mgr'    => $_POST['proj_mgr'],
+            'proj_mgr'    => $projectManagerCode,
             'proj_name'   => $_POST['proj_name'],
             'proj_owner'  => $_POST['proj_owner'],
             'proj_cost'   => $_POST['proj_cost'],
@@ -51,6 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             'proj_sd'     => $_POST['proj_sd'],
             'proj_ed'     => $_POST['proj_ed'],
             'proj_status' => $_POST['proj_status'],
+            'proj_approval_status' => $approvalStatus,
 			'public_token' => $public_token
         ];
 
@@ -58,7 +92,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         echo json_encode([
             'status' => 'success',
-            'message' => 'Project saved successfully',
+            'message' => $approvalStatus === 0
+                ? 'Project created and submitted for Admin approval.'
+                : 'Project saved successfully.',
             'proj_code' => $proj_code
         ]);
 
@@ -66,7 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         echo json_encode([
             'status' => 'error',
-            'message' => $e->getMessage()
+            'message' => "Request failed."
         ]);
     }
 }

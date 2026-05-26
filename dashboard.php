@@ -881,7 +881,7 @@ if (!isset($_SESSION['user_type']) ||
         </div>
 		<div class="row">
 		
-		<?php if (isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'Admin') { ?>
+		<?php if (isset($_SESSION['user_type']) && in_array($_SESSION['user_type'], ['Admin', 'Manager'], true)) { ?>
 		<div class="col-md-4">
             <!-- general form elements -->
             <div class="card card-info">
@@ -922,6 +922,7 @@ if (!isset($_SESSION['user_type']) ||
             <th>Description</th>
             <th>Start Date</th>
             <th>End Date</th>
+            <th>Approval</th>
             <th>Status</th>
             <th>Attachments</th>
             <th>Action</th>
@@ -1309,13 +1310,13 @@ if (!isset($_SESSION['user_type']) ||
            <?php
 		   
 		   if (isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'Admin') { 
-            $projs = $db->getAllRecords("tbl_project", "proj_code, proj_name", "", "ORDER BY proj_code ASC");
+            $projs = $db->getAllRecords("tbl_project", "proj_code, proj_name", "AND COALESCE(proj_approval_status, 1) = 1", "ORDER BY proj_code ASC");
            }else{ 
 			
 			$stmt = $pdo->prepare("
     SELECT proj_code, proj_name 
     FROM tbl_project 
-    WHERE proj_mgr = ? 
+    WHERE proj_mgr = ? AND COALESCE(proj_approval_status, 1) = 1
     ORDER BY proj_code ASC
 ");
 $stmt->execute([$usr_code]);
@@ -1728,12 +1729,12 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 		<hr>
 		<?php
 		if (isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'Admin') {
-			$reportProjects = $db->getAllRecords("tbl_project", "proj_code, proj_name", "", "ORDER BY proj_code ASC");
+			$reportProjects = $db->getAllRecords("tbl_project", "proj_code, proj_name", "AND COALESCE(proj_approval_status, 1) = 1", "ORDER BY proj_code ASC");
 		} else {
 			$stmt = $pdo->prepare("
 				SELECT proj_code, proj_name
 				FROM tbl_project
-				WHERE proj_mgr = ?
+				WHERE proj_mgr = ? AND COALESCE(proj_approval_status, 1) = 1
 				ORDER BY proj_code ASC
 			");
 			$stmt->execute([$usr_code]);
@@ -3499,6 +3500,19 @@ $(document).ready(function() {
         { data: 'proj_ed' },
 
         // =========================
+        // APPROVAL STATUS
+        // =========================
+        {
+            data: 'proj_approval_status',
+            render: function (data) {
+                if (parseInt(data, 10) === 1) {
+                    return '<span class="badge bg-success">Approved</span>';
+                }
+                return '<span class="badge bg-warning text-dark">Pending Admin Approval</span>';
+            }
+        },
+
+        // =========================
         // STATUS (0 = Ongoing, 1 = Completed)
         // =========================
         {
@@ -3539,7 +3553,15 @@ $(document).ready(function() {
             data: null,
             orderable: false,
             render: function (data) {
-                return `
+                const isAdmin = "<?= $_SESSION['user_type'] ?? '' ?>" === 'Admin';
+                const pendingApproval = parseInt(data.proj_approval_status, 10) !== 1;
+
+                let actions = '';
+                if (isAdmin && pendingApproval) {
+                    actions += `<button class="btn btn-sm btn-warning approve-project-btn mr-1" data-id="${data.proj_code}">Approve</button>`;
+                }
+
+                actions += `
                     <button class="btn btn-sm btn-primary view-btn" data-id="${data.proj_code}">
                         View
                     </button>
@@ -3551,6 +3573,8 @@ $(document).ready(function() {
                         QR-Code
                     </button>
                 `;
+
+                return actions;
             }
         }
     ],
@@ -4484,10 +4508,7 @@ $('#project-form').on('submit', function(e){
             if(res.status === 'success'){
                 toastr.success(res.message);
                 form.reset();
-                $('#supplier_id').val('');
-                $('#cancelSupplierEditBtn').addClass('d-none');
-                btn.html('<i class="fas fa-save"></i> Save Supplier');
-                supplierTable.ajax.reload(null, false);
+                projecttable.ajax.reload(null, false);
             } else {
                 toastr.error(res.message);
             }
@@ -4505,6 +4526,31 @@ $('#project-form').on('submit', function(e){
 });
 
 //end save project
+
+$(document).on('click', '.approve-project-btn', function() {
+    const projCode = $(this).data('id');
+    if (!projCode) {
+        return;
+    }
+
+    $.ajax({
+        url: 'ajax/approve_project.php',
+        type: 'POST',
+        dataType: 'json',
+        data: { proj_code: projCode },
+        success: function(res) {
+            if (res.status === 'success') {
+                toastr.success(res.message);
+                projecttable.ajax.reload(null, false);
+            } else {
+                toastr.error(res.message || 'Approval failed.');
+            }
+        },
+        error: function() {
+            toastr.error('Approval failed.');
+        }
+    });
+});
 
 //save supplier form
 $('#supplierForm').on('submit', function(e){

@@ -4,15 +4,20 @@ include_once('config.php');
 
 header('Content-Type: application/json');
 
-$rows = $db->getAllRecords('tbl_or');
+if (!isset($_SESSION['user_code'])) {
+    http_response_code(401);
+    echo json_encode(["data" => [], "message" => "Unauthorized."]);
+    exit;
+}
 
+if (isset($_SESSION['user_dept']) && $_SESSION['user_dept'] === 'Project') {
+    $stmt = $pdo->prepare("SELECT * FROM tbl_or WHERE user_code = ? ORDER BY proj_code ASC");
+    $stmt->execute([$_SESSION['user_code']]);
+} else {
+    $stmt = $pdo->query("SELECT * FROM tbl_or");
+}
 
- if (isset($_SESSION['user_dept']) && $_SESSION['user_dept'] === 'Project') { 
-   $rows = $db->getAllRecords("tbl_or","*","AND user_code = '".$_SESSION['user_code']."'","ORDER BY proj_code ASC");
-           }else{ 
-			$rows = $db->getAllRecords('tbl_or');
-			
-		   }
+$rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 
 

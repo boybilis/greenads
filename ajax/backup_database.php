@@ -82,6 +82,6 @@ try {
         http_response_code(500);
         header('Content-Type: text/plain; charset=utf-8');
     }
-    echo 'Backup failed: ' . $e->getMessage();
+    echo 'Backup failed: ' . "Request failed.";
 }
 ?>

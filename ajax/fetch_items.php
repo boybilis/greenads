@@ -2,6 +2,12 @@
 session_start();
 include_once('config.php');
 header('Content-Type: application/json');
+if (!isset($_SESSION['user_code'])) {
+    http_response_code(401);
+    echo json_encode(['data' => [], 'message' => 'Unauthorized.']);
+    exit;
+}
+
 
 $columns = $pdo->query("SHOW COLUMNS FROM tbl_items")->fetchAll(PDO::FETCH_COLUMN);
 if (!in_array('reorder_level', $columns, true)) {
