@@ -4,7 +4,7 @@ include_once('config.php');
 include_once('audit_helper.php');
 
 $userType = $_SESSION['user_type'] ?? '';
-$canManagePricing = ($userType === 'Purchasing');
+$canManagePricing = in_array($userType, ['Admin', 'Purchasing'], true);
 
 $pid=$_POST['id'];
 $sku=trim($_POST['sku'] ?? '');

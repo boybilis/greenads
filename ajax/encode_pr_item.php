@@ -16,7 +16,7 @@ $poItemId = (int)($_POST['po_item_id'] ?? 0);
 $unitPrice = (float)($_POST['unit_price'] ?? 0);
 $inventorySku = trim($_POST['inventory_sku'] ?? '');
 $createdBy = $_SESSION['username'] ?? $_SESSION['user_code'];
-$canManagePricing = (($_SESSION['user_type'] ?? '') === 'Purchasing');
+$canManagePricing = in_array(($_SESSION['user_type'] ?? ''), ['Admin', 'Purchasing'], true);
 
 if ($prId <= 0 || $poItemId <= 0) {
     echo json_encode(['status' => 'error', 'message' => 'Invalid item reference.']);

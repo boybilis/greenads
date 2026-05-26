@@ -8,7 +8,7 @@ if (!isset($_SESSION['user_code'])) {
 }
 include_once("ajax/config.php");
 $usr_code=$_SESSION['user_code'];
-$canManagePricing = (isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'Purchasing');
+$canManagePricing = (isset($_SESSION['user_type']) && in_array($_SESSION['user_type'], ['Admin', 'Purchasing'], true));
 $hasProjectApprovalColumn = false;
 try {
     $projectCols = $pdo->query("SHOW COLUMNS FROM tbl_project")->fetchAll(PDO::FETCH_COLUMN);
@@ -3243,7 +3243,7 @@ $(document).ready(function() {
 		$('#inventoryInForm')[0].reset();
 		$('#inv_in_sku').val('');
 		$('#inv_in_current_qty').val('');
-		$('#inv_in_unit_price').val(canManagePricingInventory ? '' : '0.00');
+		$('#inv_in_unit_price').val('');
 		$('.inv-item-dropdown').hide().empty();
 		$('#inventoryInModal').modal('show');
 		loadInventoryInItems();
@@ -3266,7 +3266,7 @@ $(document).ready(function() {
 		$('#inv_in_sku').val('');
 		$('#inv_in_current_qty').val('');
 		$('#inv_in_unit').val('');
-		$('#inv_in_unit_price').val(canManagePricingInventory ? '' : '0.00');
+		$('#inv_in_unit_price').val('');
 
 		if (keyword.length === 0) {
 			dropdown.hide().empty();
@@ -3311,7 +3311,7 @@ $(document).ready(function() {
 		$('#inv_in_item_search').val(item.material_name + ' - ' + item.color + ' (' + item.sku + ')');
 		$('#inv_in_current_qty').val('On-hand: ' + item.quantity + ' | Reserved: ' + item.reserved_qty + ' | Available: ' + item.available_qty);
 		$('#inv_in_unit').val(item.unit);
-		$('#inv_in_unit_price').val(canManagePricingInventory ? item.unit_price : '0.00');
+		$('#inv_in_unit_price').val(item.unit_price);
 		$('.inv-item-dropdown').hide().empty();
 	});
 
@@ -3940,7 +3940,7 @@ $('#material_name, #color, #gsm').on('input blur', buildSkuPreview);
                 $('#description').val(item.description || '');
                 $('#quantity').val(item.quantity || 0);
                 $('#unit').val(item.unit || '');
-                $('#unit_price').val(canManagePricing ? (item.unit_price || '') : '0.00');
+                $('#unit_price').val(item.unit_price || '0.00');
                 $('#unit_price').prop('readonly', !canManagePricing);
                 $('#reorder_level').val(item.reorder_level || 10);
                 $('#location').val(item.location || '');
@@ -3958,11 +3958,14 @@ $('#material_name, #color, #gsm').on('input blur', buildSkuPreview);
         $('#productModalLabel').text('Add Material');
         $('#productForm')[0].reset();
         $('#id').val('');
+        if (!canManagePricing) {
+            $('#unit_price').val('0.00');
+        }
         pendingEncodeAfterProductSave = null;
     });
 
     if (!canManagePricing) {
-        $('#unit_price').val('0.00').prop('readonly', true);
+        $('#unit_price').prop('readonly', true);
     }
    
 });

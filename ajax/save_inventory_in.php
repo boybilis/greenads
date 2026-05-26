@@ -21,7 +21,7 @@ $receiptNo = trim($_POST['receipt_no'] ?? '');
 $receiptDate = trim($_POST['receipt_date'] ?? '');
 $poCode = trim($_POST['po_code'] ?? '');
 $createdBy = $_SESSION['username'] ?? $_SESSION['user_code'];
-$canManagePricing = (($_SESSION['user_type'] ?? '') === 'Purchasing');
+$canManagePricing = in_array(($_SESSION['user_type'] ?? ''), ['Admin', 'Purchasing'], true);
 
 if ($sku === '' || $quantity <= 0 || $unit === '' || $receiptNo === '' || $receiptDate === '') {
     echo json_encode([
