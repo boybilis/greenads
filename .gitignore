@@ -41,3 +41,4 @@ ad.js
 // Environment secrets
 .env
 ajax/.env
+ajax/config.old.php
