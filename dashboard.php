@@ -139,6 +139,10 @@ table.dataTable td {
     width: 20%; /* adjust based on number of columns */
 	 white-space: nowrap;
 }
+
+tr.pending-approval-row td {
+  background-color: #fff8db !important;
+}
   </style>
   <style>
   .item-dropdown {
@@ -912,7 +916,10 @@ if (!isset($_SESSION['user_type']) ||
 		<!-- TABLE: LATEST ORDERS -->
             <div class="card">
               <div class="card-header border-primary">
-                <h3 class="card-title">Project List</h3>
+                <h3 class="card-title">
+                  Project List
+                  <span class="badge bg-warning text-dark ml-2" id="projectApprovalCounter">0 Pending Approval</span>
+                </h3>
 
                
               </div>
@@ -3465,7 +3472,19 @@ $(document).ready(function() {
     ajax: {
         url: 'ajax/fetch_projects.php',
         type: 'GET',
-        dataSrc: ''
+        dataSrc: function (json) {
+            const rows = Array.isArray(json) ? json : [];
+            const pendingCount = rows.filter(function (r) {
+                return parseInt(r.proj_approval_status, 10) !== 1;
+            }).length;
+            const $counter = $('#projectApprovalCounter');
+            if (pendingCount > 0) {
+                $counter.text(pendingCount + ' Pending Approval').removeClass('d-none');
+            } else {
+                $counter.addClass('d-none');
+            }
+            return rows;
+        }
     },
 
     columns: [
@@ -3591,6 +3610,12 @@ $(document).ready(function() {
     // ROW COLOR BY STATUS
     // =========================
     rowCallback: function (row, data) {
+        $(row).removeClass('table-warning table-success pending-approval-row');
+
+        if (parseInt(data.proj_approval_status, 10) !== 1) {
+            $(row).addClass('pending-approval-row');
+            return;
+        }
 
         if (data.proj_status == 0) {
             $(row).addClass('table-warning'); // Ongoing
