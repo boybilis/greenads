@@ -8,6 +8,14 @@ if (!isset($_SESSION['user_code'])) {
 }
 include_once("ajax/config.php");
 $usr_code=$_SESSION['user_code'];
+$hasProjectApprovalColumn = false;
+try {
+    $projectCols = $pdo->query("SHOW COLUMNS FROM tbl_project")->fetchAll(PDO::FETCH_COLUMN);
+    $hasProjectApprovalColumn = in_array('proj_approval_status', $projectCols, true);
+} catch (Exception $e) {
+    $hasProjectApprovalColumn = false;
+}
+$projectApprovalFilterSql = $hasProjectApprovalColumn ? "COALESCE(proj_approval_status, 1) = 1" : "1 = 1";
 
 $purchaseRequestLowStockItems = [];
 try {
@@ -1310,16 +1318,16 @@ if (!isset($_SESSION['user_type']) ||
            <?php
 		   
 		   if (isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'Admin') { 
-            $projs = $db->getAllRecords("tbl_project", "proj_code, proj_name", "AND COALESCE(proj_approval_status, 1) = 1", "ORDER BY proj_code ASC");
+            $projs = $db->getAllRecords("tbl_project", "proj_code, proj_name", "AND " . $projectApprovalFilterSql, "ORDER BY proj_code ASC");
            }else{ 
 			
-			$stmt = $pdo->prepare("
-    SELECT proj_code, proj_name 
+			$stmt = $pdo->prepare(
+    "SELECT proj_code, proj_name 
     FROM tbl_project 
-    WHERE proj_mgr = ? AND COALESCE(proj_approval_status, 1) = 1
-    ORDER BY proj_code ASC
-");
-$stmt->execute([$usr_code]);
+    WHERE proj_mgr = ? AND " . $projectApprovalFilterSql . "
+    ORDER BY proj_code ASC"
+);
+            $stmt->execute([$usr_code]);
 
 $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 		   }
@@ -1729,14 +1737,14 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 		<hr>
 		<?php
 		if (isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'Admin') {
-			$reportProjects = $db->getAllRecords("tbl_project", "proj_code, proj_name", "AND COALESCE(proj_approval_status, 1) = 1", "ORDER BY proj_code ASC");
+			$reportProjects = $db->getAllRecords("tbl_project", "proj_code, proj_name", "AND " . $projectApprovalFilterSql, "ORDER BY proj_code ASC");
 		} else {
-			$stmt = $pdo->prepare("
-				SELECT proj_code, proj_name
+			$stmt = $pdo->prepare(
+				"SELECT proj_code, proj_name
 				FROM tbl_project
-				WHERE proj_mgr = ? AND COALESCE(proj_approval_status, 1) = 1
-				ORDER BY proj_code ASC
-			");
+				WHERE proj_mgr = ? AND " . $projectApprovalFilterSql . "
+				ORDER BY proj_code ASC"
+			);
 			$stmt->execute([$usr_code]);
 			$reportProjects = $stmt->fetchAll(PDO::FETCH_ASSOC);
 		}

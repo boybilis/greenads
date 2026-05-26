@@ -16,16 +16,15 @@ if (!isset($_SESSION['user_code'])) {
 
 try {
     $columns = $pdo->query("SHOW COLUMNS FROM tbl_project")->fetchAll(PDO::FETCH_COLUMN);
-    if (!in_array('proj_approval_status', $columns, true)) {
-        $pdo->exec("ALTER TABLE tbl_project ADD proj_approval_status TINYINT(1) NOT NULL DEFAULT 1");
-    }
+    $hasApprovalColumn = in_array('proj_approval_status', $columns, true);
 
     $user = $_SESSION['user_code'] ?? '';
     $type = $_SESSION['user_type'] ?? '';
+    $approvalSelect = $hasApprovalColumn ? 'COALESCE(p.proj_approval_status, 1)' : '1';
 
     $sql = "
         SELECT p.*,
-               COALESCE(p.proj_approval_status, 1) AS proj_approval_status,
+               {$approvalSelect} AS proj_approval_status,
                COUNT(f.id) AS file_count
         FROM tbl_project p
         LEFT JOIN tbl_project_files f 
@@ -54,10 +53,6 @@ try {
 
 } catch (Exception $e) {
     error_log('fetch_projects failed.');
-
-    echo json_encode([
-        "status" => "error",
-        "message" => "Request failed."
-    ]);
+    echo json_encode([]);
     exit;
 }
