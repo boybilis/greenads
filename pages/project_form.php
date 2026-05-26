@@ -10,17 +10,22 @@
         <!-- Project Manager -->
         <div class="form-group">
             <label>Project Manager</label>
-            <?php
-            $users = $db->getAllRecords("tbl_user", "user_code, user_name", "", "ORDER BY user_name ASC");
-            ?>
-            <select name="proj_mgr" class="form-control" required>
-                <option value="">Select Manager</option>
-                <?php foreach($users as $row): ?>
-                    <option value="<?= htmlspecialchars($row['user_code']); ?>">
-                        <?= htmlspecialchars($row['user_name']); ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
+            <?php if (isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'Manager') { ?>
+                <input type="text" class="form-control" value="<?= htmlspecialchars($_SESSION['username'] ?? ''); ?>" readonly>
+                <input type="hidden" name="proj_mgr" value="<?= htmlspecialchars($_SESSION['user_code'] ?? ''); ?>">
+            <?php } else { ?>
+                <?php
+                $users = $db->getAllRecords("tbl_user", "user_code, user_name", "", "ORDER BY user_name ASC");
+                ?>
+                <select name="proj_mgr" class="form-control" required>
+                    <option value="">Select Manager</option>
+                    <?php foreach($users as $row): ?>
+                        <option value="<?= htmlspecialchars($row['user_code']); ?>">
+                            <?= htmlspecialchars($row['user_name']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            <?php } ?>
         </div>
 
         <!-- Project Name -->
