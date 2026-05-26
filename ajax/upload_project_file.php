@@ -1,7 +1,17 @@
 <?php
+session_start();
 require_once 'config.php';
 
 header('Content-Type: application/json');
+
+if (!isset($_SESSION['user_code'])) {
+    http_response_code(401);
+    echo json_encode([
+        "status" => "error",
+        "message" => "Unauthorized."
+    ]);
+    exit;
+}
 
 if (!isset($_POST['proj_code']) || !isset($_FILES['file'])) {
     echo json_encode([
@@ -11,8 +21,16 @@ if (!isset($_POST['proj_code']) || !isset($_FILES['file'])) {
     exit;
 }
 
-$proj_code = $_POST['proj_code'];
+$proj_code = trim((string)$_POST['proj_code']);
 $file = $_FILES['file'];
+
+if ($proj_code === '') {
+    echo json_encode([
+        "status" => "error",
+        "message" => "Invalid project code"
+    ]);
+    exit;
+}
 
 $allowed = ['jpg','jpeg','png','pdf'];
 
@@ -20,7 +38,15 @@ $originalName = $file['name'];
 $tmp = $file['tmp_name'];
 $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
 
-if (!in_array($ext, $allowed)) {
+if (!is_uploaded_file($tmp)) {
+    echo json_encode([
+        "status" => "error",
+        "message" => "Invalid upload request"
+    ]);
+    exit;
+}
+
+if (!in_array($ext, $allowed, true)) {
     echo json_encode([
         "status" => "error",
         "message" => "Invalid file type"
@@ -56,9 +82,10 @@ if (move_uploaded_file($tmp, $fullPath)) {
         ]);
 
     } catch (Exception $e) {
+        error_log('Project file upload DB insert failed.');
         echo json_encode([
             "status" => "error",
-            "message" => $e->getMessage()
+            "message" => "Upload failed"
         ]);
     }
 

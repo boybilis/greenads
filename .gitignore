@@ -31,9 +31,13 @@ docs/_site
 docs_html/
 .jekyll-cache/
 .jekyll-metadata
-/ajax/config/php
+
 
 // ETC
 TODO
 test.html
 ad.js
+
+// Environment secrets
+.env
+ajax/.env
