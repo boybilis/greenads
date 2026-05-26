@@ -41,7 +41,11 @@ try {
         $params[] = $user;
     }
 
-    $sql .= " GROUP BY p.proj_code ORDER BY p.proj_code DESC";
+    if ($hasApprovalColumn) {
+        $sql .= " GROUP BY p.proj_code ORDER BY COALESCE(p.proj_approval_status, 1) ASC, p.proj_code DESC";
+    } else {
+        $sql .= " GROUP BY p.proj_code ORDER BY p.proj_code DESC";
+    }
 
     $stmt = $db->getPdo()->prepare($sql);
     $stmt->execute($params);
