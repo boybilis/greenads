@@ -1,6 +1,7 @@
 <?php
 session_start();
 include_once('config.php');
+include_once('audit_helper.php');
 
 header('Content-Type: application/json');
 
@@ -9,6 +10,8 @@ if (!isset($_SESSION['user_code'])) {
     echo json_encode(['data' => [], 'message' => 'Unauthorized.']);
     exit;
 }
+$userType = $_SESSION['user_type'] ?? '';
+$isAdminUser = ($userType === 'Admin');
 
 try {
     $pdo->exec("
@@ -36,6 +39,9 @@ try {
     }
     if (!in_array('fulfillment_status', $poColumns, true)) {
         $pdo->exec("ALTER TABLE tbl_purchase_orders ADD fulfillment_status VARCHAR(30) NOT NULL DEFAULT 'Pending' AFTER date_received");
+    }
+    if (!in_array('approval_status', $poColumns, true)) {
+        $pdo->exec("ALTER TABLE tbl_purchase_orders ADD approval_status VARCHAR(30) NOT NULL DEFAULT 'Pending' AFTER fulfillment_status");
     }
 
     $pdo->exec("
@@ -66,6 +72,7 @@ try {
             po.receipt_no,
             po.date_received,
             po.fulfillment_status,
+            COALESCE(po.approval_status, 'Pending') AS approval_status,
             s.supplier_name,
             po.created_by,
             COUNT(poi.po_item_id) AS item_count,
@@ -74,17 +81,34 @@ try {
         LEFT JOIN tbl_purchase_requests pr ON pr.pr_id = po.pr_id
         LEFT JOIN tbl_suppliers s ON s.supplier_id = po.supplier_id
         LEFT JOIN tbl_purchase_order_items poi ON poi.po_id = po.po_id
-        GROUP BY po.po_id, po.po_ref_no, pr.pr_ref_no, po.po_date, po.receipt_no, po.date_received, po.fulfillment_status, s.supplier_name, po.created_by
+        GROUP BY po.po_id, po.po_ref_no, pr.pr_ref_no, po.po_date, po.receipt_no, po.date_received, po.fulfillment_status, po.approval_status, s.supplier_name, po.created_by
         ORDER BY po.po_id DESC
     ");
 
     $data = [];
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $isFulfilled = ($row['fulfillment_status'] ?? 'Pending') === 'Fulfilled';
+        $isApproved = ($row['approval_status'] ?? 'Pending') === 'Approved';
         $poRefNo = $row['po_ref_no'] ?: ('PO-' . str_pad((string)$row['po_id'], 6, '0', STR_PAD_LEFT));
-        $action = '<a href="purchase_order_print?po_id=' . (int)$row['po_id'] . '" target="_blank"><span class="badge badge-info">View</span></a>';
-        if (!$isFulfilled) {
-            $action .= ' | <a href="#" class="fulfill-po" data-id="' . (int)$row['po_id'] . '" data-ref="' . htmlspecialchars($poRefNo) . '"><span class="badge badge-warning">Fulfill</span></a>';
+        $action = '';
+
+        if ($isAdminUser) {
+            $action = '<a href="purchase_order_print?po_id=' . (int)$row['po_id'] . '" target="_blank"><span class="badge badge-info">View</span></a>';
+            if (!$isApproved) {
+                $action .= ' | <a href="#" class="approve-po" data-id="' . (int)$row['po_id'] . '" data-ref="' . htmlspecialchars($poRefNo) . '"><span class="badge badge-primary">Approve PO</span></a>';
+            }
+            if ($isApproved && !$isFulfilled) {
+                $action .= ' | <a href="#" class="fulfill-po" data-id="' . (int)$row['po_id'] . '" data-ref="' . htmlspecialchars($poRefNo) . '"><span class="badge badge-warning">Fulfill</span></a>';
+            }
+        } else {
+            if ($isApproved) {
+                $action = '<a href="purchase_order_print?po_id=' . (int)$row['po_id'] . '" target="_blank"><span class="badge badge-info">View</span></a>';
+                if (!$isFulfilled) {
+                    $action .= ' | <a href="#" class="fulfill-po" data-id="' . (int)$row['po_id'] . '" data-ref="' . htmlspecialchars($poRefNo) . '"><span class="badge badge-warning">Fulfill</span></a>';
+                }
+            } else {
+                $action = '<span class="badge badge-secondary">PO for Approval</span>';
+            }
         }
 
         $data[] = [

@@ -5597,6 +5597,43 @@ $(document).on('click', '.fulfill-po', function(e) {
     $('#fulfillPoModal').modal('show');
 });
 
+$(document).on('click', '.approve-po', function(e) {
+    e.preventDefault();
+
+    const poId = $(this).data('id');
+    const poRef = $(this).data('ref') || '';
+
+    if (!poId) {
+        toastr.error('Invalid PO reference.');
+        return;
+    }
+
+    if (!confirm('Approve PO ' + poRef + '?')) {
+        return;
+    }
+
+    $.ajax({
+        url: 'ajax/approve_purchase_order.php',
+        type: 'POST',
+        dataType: 'json',
+        data: { po_id: poId },
+        success: function(res) {
+            if (res.status === 'success') {
+                toastr.success(res.message || 'PO approved.');
+                if (purchaseOrderTable) {
+                    purchaseOrderTable.ajax.reload(null, false);
+                }
+            } else {
+                toastr.error(res.message || 'Failed to approve PO.');
+            }
+        },
+        error: function(xhr) {
+            console.error(xhr.responseText);
+            toastr.error('Failed to approve PO.');
+        }
+    });
+});
+
 $('#fulfillPoForm').on('submit', function(e) {
     e.preventDefault();
 

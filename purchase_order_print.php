@@ -17,6 +17,9 @@ if (!in_array('date_received', $poColumns, true)) {
 if (!in_array('fulfillment_status', $poColumns, true)) {
     $pdo->exec("ALTER TABLE tbl_purchase_orders ADD fulfillment_status VARCHAR(30) NOT NULL DEFAULT 'Pending' AFTER date_received");
 }
+if (!in_array('approval_status', $poColumns, true)) {
+    $pdo->exec("ALTER TABLE tbl_purchase_orders ADD approval_status VARCHAR(30) NOT NULL DEFAULT 'Pending' AFTER fulfillment_status");
+}
 
 $headerStmt = $pdo->prepare("
     SELECT
@@ -26,6 +29,7 @@ $headerStmt = $pdo->prepare("
         po.receipt_no,
         po.date_received,
         po.fulfillment_status,
+        COALESCE(po.approval_status, 'Pending') AS approval_status,
         po.created_by,
         pr.pr_ref_no,
         s.supplier_name,
@@ -43,6 +47,9 @@ $po = $headerStmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$po) {
     die('PO request was not found.');
+}
+if (($po['approval_status'] ?? 'Pending') !== 'Approved' && (($_SESSION['user_type'] ?? '') !== 'Admin')) {
+    die('This PO is pending admin approval.');
 }
 
 $itemStmt = $pdo->prepare("
