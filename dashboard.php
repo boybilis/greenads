@@ -1,5 +1,8 @@
 <?php
 session_start();
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+header('Expires: 0');
 
 // 🔒 Block access if not logged in
 if (!isset($_SESSION['user_code'])) {
@@ -5741,8 +5744,9 @@ $(document).on('click', '.encode-pr-request', function(e) {
     $.ajax({
         url: 'ajax/fetch_pr_encoding_items.php',
         type: 'GET',
-        data: { pr_id: prId, po_id: poId },
+        data: { pr_id: prId, po_id: poId, _: Date.now() },
         dataType: 'json',
+        cache: false,
         timeout: 15000,
         success: function(res) {
             if (res.status === 'success') {
