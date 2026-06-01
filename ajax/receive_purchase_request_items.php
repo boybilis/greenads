@@ -48,18 +48,6 @@ try {
     $updPr = $pdo->prepare("UPDATE tbl_purchase_requests SET status = 'PO Fulfilled' WHERE pr_id = ?");
     $updPr->execute([$prId]);
 
-    $poCols = $pdo->query("SHOW COLUMNS FROM tbl_purchase_orders")->fetchAll(PDO::FETCH_COLUMN);
-    if (!in_array('fulfillment_status', $poCols, true)) {
-        $pdo->exec("ALTER TABLE tbl_purchase_orders ADD fulfillment_status VARCHAR(30) NOT NULL DEFAULT 'Pending' AFTER date_received");
-    }
-
-    $updPo = $pdo->prepare("
-        UPDATE tbl_purchase_orders
-        SET fulfillment_status = 'Fulfilled'
-        WHERE pr_id = ?
-    ");
-    $updPo->execute([$prId]);
-
     $pdo->commit();
 
     audit_log($pdo, 'RECEIVE', 'Purchase Request', $pr['pr_ref_no'] ?: ('PR-' . str_pad((string)$prId, 6, '0', STR_PAD_LEFT)), 'purchase_request.status: "PO Requested" -> "PO Fulfilled"');

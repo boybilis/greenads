@@ -45,26 +45,19 @@ try {
         UPDATE tbl_purchase_orders
         SET receipt_no = ?,
             date_received = ?,
-            fulfillment_status = 'Fulfilled'
+            fulfillment_status = 'PO Verified'
         WHERE po_id = ?
     ");
     $stmt->execute([$receiptNo, $dateReceived, $poId]);
 
-    $updatePrStmt = $pdo->prepare("
-        UPDATE tbl_purchase_requests
-        SET status = 'PO Fulfilled'
-        WHERE pr_id = ?
-    ");
-    $updatePrStmt->execute([(int)$before['pr_id']]);
-
     $after = [
         'receipt_no' => $receiptNo,
         'date_received' => $dateReceived,
-        'fulfillment_status' => 'Fulfilled'
+        'fulfillment_status' => 'PO Verified'
     ];
-    audit_log($pdo, 'FULFILL', 'Purchase Order', $before['po_ref_no'] ?: (string)$poId, audit_changed_fields($before, $after, ['receipt_no', 'date_received', 'fulfillment_status']) . '; purchase_request.status -> "PO Fulfilled".');
+    audit_log($pdo, 'VERIFY', 'Purchase Order', $before['po_ref_no'] ?: (string)$poId, audit_changed_fields($before, $after, ['receipt_no', 'date_received', 'fulfillment_status']));
 
-    echo json_encode(['status' => 'success', 'message' => 'PO marked as fulfilled.']);
+    echo json_encode(['status' => 'success', 'message' => 'PO marked as verified.']);
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode(['status' => 'error', 'message' => "Request failed."]);
