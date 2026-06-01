@@ -37,12 +37,15 @@ if (!is_array($items) || count($items) === 0) {
 }
 
 $requestedItems = [];
+$requestedUnitPrices = [];
 foreach ($items as $item) {
     $sku = trim($item['sku'] ?? '');
     $poQty = (float)($item['po_qty'] ?? 0);
+    $unitPrice = (float)($item['unit_price'] ?? 0);
 
     if ($sku !== '' && $poQty > 0) {
         $requestedItems[$sku] = $poQty;
+        $requestedUnitPrices[$sku] = max(0, $unitPrice);
     }
 }
 
@@ -86,6 +89,8 @@ try {
             color VARCHAR(100) DEFAULT NULL,
             request_qty DECIMAL(12,2) NOT NULL,
             po_qty DECIMAL(12,2) NOT NULL,
+            unit_price DECIMAL(12,2) NOT NULL DEFAULT 0,
+            line_total DECIMAL(12,2) NOT NULL DEFAULT 0,
             unit VARCHAR(50) DEFAULT NULL,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             INDEX idx_po_items_po_id (po_id),
@@ -102,6 +107,12 @@ try {
     }
     if (!in_array('material_type', $poItemColumns, true)) {
         $pdo->exec("ALTER TABLE tbl_purchase_order_items ADD material_type VARCHAR(100) DEFAULT NULL AFTER item_name");
+    }
+    if (!in_array('unit_price', $poItemColumns, true)) {
+        $pdo->exec("ALTER TABLE tbl_purchase_order_items ADD unit_price DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER po_qty");
+    }
+    if (!in_array('line_total', $poItemColumns, true)) {
+        $pdo->exec("ALTER TABLE tbl_purchase_order_items ADD line_total DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER unit_price");
     }
 
     $prStmt = $pdo->prepare("
@@ -157,8 +168,12 @@ try {
     $poRows = [];
     while ($row = $itemStmt->fetch(PDO::FETCH_ASSOC)) {
         $poQty = (float)$requestedItems[$row['sku']];
+        $unitPrice = (float)($requestedUnitPrices[$row['sku']] ?? 0);
+        $lineTotal = $poQty * $unitPrice;
 
         $row['po_qty'] = $poQty;
+        $row['unit_price'] = $unitPrice;
+        $row['line_total'] = $lineTotal;
         $poRows[] = $row;
     }
 
@@ -197,9 +212,9 @@ try {
 
     $insertItemStmt = $pdo->prepare("
         INSERT INTO tbl_purchase_order_items
-            (po_id, po_ref_no, pr_item_id, sku, item_name, material_type, description, color, request_qty, po_qty, unit)
+            (po_id, po_ref_no, pr_item_id, sku, item_name, material_type, description, color, request_qty, po_qty, unit_price, line_total, unit)
         VALUES
-            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
 
     foreach ($poRows as $row) {
@@ -214,6 +229,8 @@ try {
             $row['color'],
             (float)$row['request_qty'],
             (float)$row['po_qty'],
+            (float)$row['unit_price'],
+            (float)$row['line_total'],
             $row['unit']
         ]);
     }
@@ -237,6 +254,8 @@ try {
             'color' => $row['color'] ?? 'N/A',
             'request_qty' => (float)$row['request_qty'],
             'po_qty' => (float)$row['po_qty'],
+            'unit_price' => (float)$row['unit_price'],
+            'line_total' => (float)$row['line_total'],
             'unit' => $row['unit']
         ];
     }, $poRows);

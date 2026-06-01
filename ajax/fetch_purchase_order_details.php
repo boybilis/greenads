@@ -59,6 +59,8 @@ try {
             poi.color,
             poi.request_qty,
             poi.po_qty,
+            COALESCE(poi.unit_price, 0) AS unit_price,
+            COALESCE(poi.line_total, (poi.po_qty * COALESCE(poi.unit_price, 0))) AS line_total,
             poi.unit
         FROM tbl_purchase_order_items poi
         LEFT JOIN tbl_items ti ON ti.sku = poi.sku
@@ -77,6 +79,8 @@ try {
             'color' => $row['color'] ?: 'N/A',
             'request_qty' => (float)$row['request_qty'],
             'po_qty' => (float)$row['po_qty'],
+            'unit_price' => (float)$row['unit_price'],
+            'line_total' => (float)$row['line_total'],
             'unit' => $row['unit']
         ];
     }

@@ -54,6 +54,8 @@ $itemStmt = $pdo->prepare("
         poi.color,
         poi.request_qty,
         poi.po_qty,
+        COALESCE(poi.unit_price, 0) AS unit_price,
+        COALESCE(poi.line_total, (poi.po_qty * COALESCE(poi.unit_price, 0))) AS line_total,
         poi.unit
     FROM tbl_purchase_order_items poi
     LEFT JOIN tbl_items ti ON ti.sku = poi.sku
@@ -62,6 +64,10 @@ $itemStmt = $pdo->prepare("
 ");
 $itemStmt->execute([$poId]);
 $items = $itemStmt->fetchAll(PDO::FETCH_ASSOC);
+$grandTotal = 0;
+foreach ($items as $item) {
+    $grandTotal += (float)($item['line_total'] ?? 0);
+}
 ?>
 <!doctype html>
 <html>
@@ -139,6 +145,8 @@ $items = $itemStmt->fetchAll(PDO::FETCH_ASSOC);
                     <th style="width:95px;">SKU</th>
                     <th>Item</th>
                     <th class="right" style="width:85px;">PO Qty</th>
+                    <th class="right" style="width:100px;">Unit Price</th>
+                    <th class="right" style="width:110px;">Total Price</th>
                     <th style="width:55px;">Unit</th>
                 </tr>
             </thead>
@@ -154,10 +162,19 @@ $items = $itemStmt->fetchAll(PDO::FETCH_ASSOC);
                             Color: <?= htmlspecialchars($item['color'] ?: 'N/A'); ?>
                         </td>
                         <td class="right"><?= number_format((float)$item['po_qty'], 2); ?></td>
+                        <td class="right"><?= number_format((float)$item['unit_price'], 2); ?></td>
+                        <td class="right"><?= number_format((float)$item['line_total'], 2); ?></td>
                         <td><?= htmlspecialchars($item['unit'] ?: ''); ?></td>
                     </tr>
                 <?php } ?>
             </tbody>
+            <tfoot>
+                <tr>
+                    <th colspan="5" class="right">Grand Total</th>
+                    <th class="right"><?= number_format($grandTotal, 2); ?></th>
+                    <th></th>
+                </tr>
+            </tfoot>
         </table>
 
         <div class="signatures">

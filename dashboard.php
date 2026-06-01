@@ -5402,7 +5402,7 @@ $(document).on('click', '.create-po-request', function (e) {
     const requestQty = Number(item.request_qty || 0);
     const totalPrice = requestQty * unitPrice;
     html += `
-        <tr data-sku="${item.sku}" data-unit-price="${unitPrice}">
+        <tr data-sku="${item.sku}">
             <td>
                 <strong>${item.item_name}</strong><br>
 
@@ -5422,7 +5422,10 @@ $(document).on('click', '.create-po-request', function (e) {
                 <input type="number" class="form-control po-qty" 
                        value="${requestQty}" min="0.01" step="0.01">
             </td>
-            <td class="text-right po-unit-price">${formatPoQty(unitPrice)}</td>
+            <td>
+                <input type="number" class="form-control po-unit-price-input text-right"
+                       value="${unitPrice.toFixed(2)}" min="0" step="0.01">
+            </td>
             <td class="text-right po-total-price">${formatPoQty(totalPrice)}</td>
         </tr>
     `;
@@ -5438,10 +5441,10 @@ $(document).on('click', '.create-po-request', function (e) {
     });
 });
 
-$(document).on('input', '#poItemsBody .po-qty', function() {
+$(document).on('input', '#poItemsBody .po-qty, #poItemsBody .po-unit-price-input', function() {
     const $row = $(this).closest('tr');
-    const qty = Number($(this).val() || 0);
-    const unitPrice = Number($row.data('unit-price') || 0);
+    const qty = Number($row.find('.po-qty').val() || 0);
+    const unitPrice = Number($row.find('.po-unit-price-input').val() || 0);
     const totalPrice = qty * unitPrice;
     $row.find('.po-total-price').text(formatPoQty(totalPrice));
     updatePoGrandTotal();
@@ -5458,7 +5461,7 @@ function updatePoGrandTotal() {
     let grandTotal = 0;
     $('#poItemsBody tr').each(function() {
         const qty = Number($(this).find('.po-qty').val() || 0);
-        const unitPrice = Number($(this).data('unit-price') || 0);
+        const unitPrice = Number($(this).find('.po-unit-price-input').val() || 0);
         grandTotal += qty * unitPrice;
     });
     $('#poGrandTotal').text(formatPoQty(grandTotal));
@@ -5478,8 +5481,15 @@ function printPurchaseOrder(po, previewWin) {
             '<span>Color: ' + escapeHtml(item.color || 'N/A') + '</span></td>' +
             '<td class="right">' + formatPoQty(item.request_qty) + '</td>' +
             '<td class="right">' + formatPoQty(item.po_qty) + '</td>' +
+            '<td class="right">' + formatPoQty(item.unit_price) + '</td>' +
+            '<td class="right">' + formatPoQty(item.line_total) + '</td>' +
             '<td>' + escapeHtml(item.unit || '') + '</td>' +
             '</tr>';
+    });
+
+    let grandTotal = 0;
+    (po.items || []).forEach(function(item) {
+        grandTotal += Number(item.line_total || 0);
     });
 
     const printable =
@@ -5488,7 +5498,7 @@ function printPurchaseOrder(po, previewWin) {
         '</head><body onload="window.print();"><div class="sheet">' +
         '<div class="header"><div class="logo-box">Company<br>Image</div><div class="company"><h1>Green Ads and Promats, Inc.</h1><strong>PURCHASE ORDER</strong><br>PR #: ' + escapeHtml(po.pr_ref_no || '') + '</div><div class="meta"><div><strong>PO #:</strong> ' + escapeHtml(po.po_ref_no || '') + '</div><div><strong>Date:</strong> ' + escapeHtml(po.po_date || '') + '</div></div></div>' +
         '<div class="grid"><div><div class="section-title">Supplier Details</div><div><strong>' + escapeHtml(supplier.supplier_name || '') + '</strong></div><div>Owner: ' + escapeHtml(supplier.supplier_owner || '-') + '</div><div>Address: ' + escapeHtml(supplier.address || '-') + '</div><div>Contact: ' + escapeHtml(supplier.contact_no || '-') + '</div><div>Email: ' + escapeHtml(supplier.email || '-') + '</div></div><div><div class="section-title">Prepared By</div><div>' + escapeHtml(po.created_by || '') + '</div></div></div>' +
-        '<table><thead><tr><th class="center" style="width:36px;">#</th><th style="width:95px;">SKU</th><th>Item</th><th style="width:85px;" class="right">Requested</th><th style="width:85px;" class="right">PO Qty</th><th style="width:55px;">Unit</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+        '<table><thead><tr><th class="center" style="width:36px;">#</th><th style="width:95px;">SKU</th><th>Item</th><th style="width:85px;" class="right">Requested</th><th style="width:85px;" class="right">PO Qty</th><th style="width:95px;" class="right">Unit Price</th><th style="width:110px;" class="right">Total Price</th><th style="width:55px;">Unit</th></tr></thead><tbody>' + rows + '</tbody><tfoot><tr><th colspan="6" class="right">Grand Total</th><th class="right">' + formatPoQty(grandTotal) + '</th><th></th></tr></tfoot></table>' +
         '<div class="signatures"><div class="signature-line">Prepared By</div><div class="signature-line">Approved By</div></div></div></body></html>';
 
     const win = previewWin || window.open('', '_blank', 'width=900,height=700');
@@ -5520,11 +5530,13 @@ $(document).on('click', '#savePoBtn', function () {
     $('#poItemsBody tr').each(function() {
         const sku = $(this).data('sku');
         const poQty = Number($(this).find('.po-qty').val() || 0);
+        const unitPrice = Number($(this).find('.po-unit-price-input').val() || 0);
 
         if (sku && poQty > 0) {
             items.push({
                 sku: sku,
-                po_qty: poQty
+                po_qty: poQty,
+                unit_price: unitPrice
             });
         }
     });
