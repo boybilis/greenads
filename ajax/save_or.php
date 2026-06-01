@@ -281,6 +281,7 @@ try {
                 pr_id INT AUTO_INCREMENT PRIMARY KEY,
                 pr_ref_no VARCHAR(30) DEFAULT NULL UNIQUE,
                 request_date DATE NOT NULL,
+                proj_code VARCHAR(100) DEFAULT NULL,
                 requested_by VARCHAR(100) DEFAULT NULL,
                 requested_by_code VARCHAR(100) DEFAULT NULL,
                 status VARCHAR(30) NOT NULL DEFAULT 'Pending',
@@ -289,6 +290,20 @@ try {
                 INDEX idx_purchase_requests_status (status)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
+
+        $prColumnsRes = $conn->query("SHOW COLUMNS FROM tbl_purchase_requests");
+        $hasProjCode = false;
+        if ($prColumnsRes) {
+            while ($prCol = $prColumnsRes->fetch_assoc()) {
+                if (($prCol['Field'] ?? '') === 'proj_code') {
+                    $hasProjCode = true;
+                    break;
+                }
+            }
+        }
+        if (!$hasProjCode) {
+            $conn->query("ALTER TABLE tbl_purchase_requests ADD proj_code VARCHAR(100) DEFAULT NULL AFTER request_date");
+        }
 
         $conn->query("
             CREATE TABLE IF NOT EXISTS tbl_purchase_request_items (
@@ -310,10 +325,10 @@ try {
         ");
 
         $insertPrHeader = $conn->prepare("
-            INSERT INTO tbl_purchase_requests (request_date, requested_by, requested_by_code, status)
-            VALUES (CURDATE(), ?, ?, 'Pending')
+            INSERT INTO tbl_purchase_requests (request_date, proj_code, requested_by, requested_by_code, status)
+            VALUES (CURDATE(), ?, ?, ?, 'Pending')
         ");
-        $insertPrHeader->bind_param("ss", $prepared_by, $user_code);
+        $insertPrHeader->bind_param("sss", $proj_code, $prepared_by, $user_code);
         if (!$insertPrHeader->execute()) {
             throw new Exception("Failed to create Purchase Request header.");
         }

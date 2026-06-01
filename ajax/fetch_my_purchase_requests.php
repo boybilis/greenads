@@ -11,6 +11,11 @@ if (!isset($_SESSION['user_code'])) {
 }
 
 try {
+    $prColumns = $pdo->query("SHOW COLUMNS FROM tbl_purchase_requests")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('proj_code', $prColumns, true)) {
+        $pdo->exec("ALTER TABLE tbl_purchase_requests ADD proj_code VARCHAR(100) DEFAULT NULL AFTER request_date");
+    }
+
     $where = '';
     $params = [];
 
@@ -24,13 +29,15 @@ try {
             pr.pr_id,
             pr.pr_ref_no,
             pr.request_date,
+            pr.proj_code,
+            pr.requested_by,
             pr.status,
             COUNT(pri.pr_item_id) AS item_count,
             COALESCE(SUM(pri.request_qty), 0) AS total_qty
         FROM tbl_purchase_requests pr
         LEFT JOIN tbl_purchase_request_items pri ON pri.pr_id = pr.pr_id
         {$where}
-        GROUP BY pr.pr_id, pr.pr_ref_no, pr.request_date, pr.status
+        GROUP BY pr.pr_id, pr.pr_ref_no, pr.request_date, pr.proj_code, pr.requested_by, pr.status
         ORDER BY pr.pr_id DESC
     ");
     $stmt->execute($params);
@@ -58,6 +65,8 @@ try {
         $data[] = [
             'pr_ref_no' => htmlspecialchars($row['pr_ref_no'] ?: ('PR-' . str_pad((string)$row['pr_id'], 6, '0', STR_PAD_LEFT))),
             'request_date' => htmlspecialchars($row['request_date']),
+            'proj_code' => htmlspecialchars($row['proj_code'] ?: '-'),
+            'requested_by' => htmlspecialchars($row['requested_by'] ?: '-'),
             'item_count' => (int)$row['item_count'],
             'total_qty' => number_format((float)$row['total_qty'], 2),
             'status_badge' => '<span class="badge ' . $badgeClass . '">' . htmlspecialchars($status) . '</span>',

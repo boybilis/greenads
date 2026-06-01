@@ -1627,6 +1627,8 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                       <tr>
                         <th>PR No.</th>
                         <th>Date</th>
+                        <th>Project Code</th>
+                        <th>Requested By</th>
                         <th>Items</th>
                         <th>Total Qty</th>
                         <th>Status</th>
@@ -3085,6 +3087,8 @@ $(document).ready(function() {
         columns: [
             { data: 'pr_ref_no' },
             { data: 'request_date' },
+            { data: 'proj_code' },
+            { data: 'requested_by' },
             { data: 'item_count' },
             { data: 'total_qty' },
             { data: 'status_badge' },

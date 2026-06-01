@@ -49,6 +49,7 @@ try {
             pr_id INT AUTO_INCREMENT PRIMARY KEY,
             pr_ref_no VARCHAR(30) DEFAULT NULL UNIQUE,
             request_date DATE NOT NULL,
+            proj_code VARCHAR(100) DEFAULT NULL,
             requested_by VARCHAR(100) DEFAULT NULL,
             requested_by_code VARCHAR(100) DEFAULT NULL,
             status VARCHAR(30) NOT NULL DEFAULT 'Pending',
@@ -57,6 +58,11 @@ try {
             INDEX idx_purchase_requests_status (status)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ");
+
+    $prColumns = $pdo->query("SHOW COLUMNS FROM tbl_purchase_requests")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('proj_code', $prColumns, true)) {
+        $pdo->exec("ALTER TABLE tbl_purchase_requests ADD proj_code VARCHAR(100) DEFAULT NULL AFTER request_date");
+    }
 
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS tbl_purchase_request_items (

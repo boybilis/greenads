@@ -17,6 +17,7 @@ $items = $_POST['items'] ?? [];
 $payload = trim($_POST['pr_items_payload'] ?? '');
 $requestedBy = $_SESSION['username'] ?? $_SESSION['user_code'];
 $requestedByCode = $_SESSION['user_code'];
+$projCode = trim($_POST['proj_code'] ?? '');
 
 if ((!is_array($items) || count($items) === 0) && $payload !== '') {
     $decodedPayload = json_decode($payload, true);
@@ -60,6 +61,7 @@ try {
             pr_id INT AUTO_INCREMENT PRIMARY KEY,
             pr_ref_no VARCHAR(30) DEFAULT NULL UNIQUE,
             request_date DATE NOT NULL,
+            proj_code VARCHAR(100) DEFAULT NULL,
             requested_by VARCHAR(100) DEFAULT NULL,
             requested_by_code VARCHAR(100) DEFAULT NULL,
             status VARCHAR(30) NOT NULL DEFAULT 'Pending',
@@ -68,6 +70,11 @@ try {
             INDEX idx_purchase_requests_status (status)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ");
+
+    $prColumns = $pdo->query("SHOW COLUMNS FROM tbl_purchase_requests")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('proj_code', $prColumns, true)) {
+        $pdo->exec("ALTER TABLE tbl_purchase_requests ADD proj_code VARCHAR(100) DEFAULT NULL AFTER request_date");
+    }
 
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS tbl_purchase_request_items (
@@ -100,11 +107,11 @@ try {
 
     $header = $pdo->prepare("
         INSERT INTO tbl_purchase_requests
-            (request_date, requested_by, requested_by_code, status)
+            (request_date, proj_code, requested_by, requested_by_code, status)
         VALUES
-            (CURDATE(), ?, ?, 'Pending')
+            (CURDATE(), ?, ?, ?, 'Pending')
     ");
-    $header->execute([$requestedBy, $requestedByCode]);
+    $header->execute([$projCode !== '' ? $projCode : null, $requestedBy, $requestedByCode]);
 
     $prId = (int)$pdo->lastInsertId();
     $prRefNo = 'PR-' . str_pad((string)$prId, 6, '0', STR_PAD_LEFT);
