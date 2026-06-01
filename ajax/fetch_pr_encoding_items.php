@@ -17,9 +17,10 @@ if (!in_array($_SESSION['user_type'] ?? '', ['Admin', 'Inventory', 'Purchasing']
 }
 
 $prId = (int)($_GET['pr_id'] ?? 0);
+$poId = (int)($_GET['po_id'] ?? 0);
 
-if ($prId <= 0) {
-    echo json_encode(['status' => 'error', 'message' => 'Invalid PR request.']);
+if ($prId <= 0 && $poId <= 0) {
+    echo json_encode(['status' => 'error', 'message' => 'Invalid PR/PO request.']);
     exit;
 }
 
@@ -49,22 +50,40 @@ try {
         INDEX idx_inventory_in_po_code (po_code)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
-    $headerStmt = $pdo->prepare("
-        SELECT
-            pr.pr_id,
-            pr.pr_ref_no,
-            pr.status,
-            po.po_id,
-            po.po_ref_no,
-            po.receipt_no,
-            po.date_received
-        FROM tbl_purchase_requests pr
-        INNER JOIN tbl_purchase_orders po ON po.pr_id = pr.pr_id
-        WHERE pr.pr_id = ?
-        ORDER BY po.po_id DESC
-        LIMIT 1
-    ");
-    $headerStmt->execute([$prId]);
+    if ($poId > 0) {
+        $headerStmt = $pdo->prepare("
+            SELECT
+                pr.pr_id,
+                pr.pr_ref_no,
+                pr.status,
+                po.po_id,
+                po.po_ref_no,
+                po.receipt_no,
+                po.date_received
+            FROM tbl_purchase_orders po
+            INNER JOIN tbl_purchase_requests pr ON pr.pr_id = po.pr_id
+            WHERE po.po_id = ?
+            LIMIT 1
+        ");
+        $headerStmt->execute([$poId]);
+    } else {
+        $headerStmt = $pdo->prepare("
+            SELECT
+                pr.pr_id,
+                pr.pr_ref_no,
+                pr.status,
+                po.po_id,
+                po.po_ref_no,
+                po.receipt_no,
+                po.date_received
+            FROM tbl_purchase_requests pr
+            INNER JOIN tbl_purchase_orders po ON po.pr_id = pr.pr_id
+            WHERE pr.pr_id = ?
+            ORDER BY po.po_id DESC
+            LIMIT 1
+        ");
+        $headerStmt->execute([$prId]);
+    }
     $header = $headerStmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$header) {

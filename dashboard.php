@@ -5729,6 +5729,7 @@ $(document).on('click', '.encode-pr-request', function(e) {
     }
 
     const prId = $(this).data('id');
+    const poId = Number($(this).data('po-id') || 0);
     $('#encode_pr_id').val(prId);
     $('#encodePrRef').text('Loading...');
     $('#encodePoRef').text('');
@@ -5740,7 +5741,7 @@ $(document).on('click', '.encode-pr-request', function(e) {
     $.ajax({
         url: 'ajax/fetch_pr_encoding_items.php',
         type: 'GET',
-        data: { pr_id: prId },
+        data: { pr_id: prId, po_id: poId },
         dataType: 'json',
         success: function(res) {
             if (res.status === 'success') {

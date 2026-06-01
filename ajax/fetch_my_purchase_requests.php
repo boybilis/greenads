@@ -36,10 +36,12 @@ try {
             pr.proj_code,
             pr.requested_by,
             pr.status,
+            MAX(po.po_id) AS po_id,
             COUNT(pri.pr_item_id) AS item_count,
             COALESCE(SUM(pri.request_qty), 0) AS total_qty
         FROM tbl_purchase_requests pr
         LEFT JOIN tbl_purchase_request_items pri ON pri.pr_id = pr.pr_id
+        LEFT JOIN tbl_purchase_orders po ON po.pr_id = pr.pr_id
         {$where}
         GROUP BY pr.pr_id, pr.pr_ref_no, pr.request_date, pr.proj_code, pr.requested_by, pr.status
         ORDER BY pr.pr_id DESC
@@ -67,7 +69,7 @@ try {
             $action .= ' <a href="#" class="receive-pr-items" data-id="' . (int)$row['pr_id'] . '" data-ref="' . htmlspecialchars($row['pr_ref_no'] ?: ('PR-' . str_pad((string)$row['pr_id'], 6, '0', STR_PAD_LEFT))) . '"><span class="badge badge-warning">Receive Item</span></a>';
         }
         if (in_array($userType, ['Admin', 'Inventory'], true) && $status === 'PO Fulfilled') {
-            $action .= ' <a href="#" class="encode-pr-request" data-id="' . (int)$row['pr_id'] . '"><span class="badge badge-success">Encode</span></a>';
+            $action .= ' <a href="#" class="encode-pr-request" data-id="' . (int)$row['pr_id'] . '" data-po-id="' . (int)$row['po_id'] . '"><span class="badge badge-success">Encode</span></a>';
         }
 
         $data[] = [
