@@ -5590,11 +5590,57 @@ $(document).on('click', '#savePoBtn', function () {
 $(document).on('click', '.fulfill-po', function(e) {
     e.preventDefault();
 
+    const actionLabel = $(this).data('action-label') || 'Fulfill';
     $('#fulfillPoForm')[0].reset();
     $('#fulfill_po_id').val($(this).data('id'));
     $('#fulfill_po_ref').val($(this).data('ref'));
     $('#date_received').val(new Date().toISOString().slice(0, 10));
+    $('#fulfillPoModal .modal-title').text(actionLabel + ' Purchase Order');
+    $('#saveFulfillPoBtn').text(actionLabel === 'Verify' ? 'Save Verification' : 'Save Fulfillment');
     $('#fulfillPoModal').modal('show');
+});
+
+$(document).on('click', '.receive-pr-items', function(e) {
+    e.preventDefault();
+
+    const prId = $(this).data('id');
+    const prRef = $(this).data('ref') || '';
+
+    if (!prId) {
+        toastr.error('Invalid PR reference.');
+        return;
+    }
+
+    if (!confirm('Mark ' + prRef + ' as received? This will set status to PO Fulfilled and enable Encode.')) {
+        return;
+    }
+
+    $.ajax({
+        url: 'ajax/receive_purchase_request_items.php',
+        type: 'POST',
+        dataType: 'json',
+        data: { pr_id: prId },
+        success: function(res) {
+            if (res.status === 'success') {
+                toastr.success(res.message || 'Items received.');
+                if (inventoryPurchaseRequestTable) {
+                    inventoryPurchaseRequestTable.ajax.reload(null, false);
+                }
+                if (purchaseRequestTable) {
+                    purchaseRequestTable.ajax.reload(null, false);
+                }
+                if (purchaseOrderTable) {
+                    purchaseOrderTable.ajax.reload(null, false);
+                }
+            } else {
+                toastr.error(res.message || 'Failed to mark items received.');
+            }
+        },
+        error: function(xhr) {
+            console.error(xhr.responseText);
+            toastr.error('Failed to mark items received.');
+        }
+    });
 });
 
 $(document).on('click', '.approve-po', function(e) {

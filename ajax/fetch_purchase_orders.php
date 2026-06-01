@@ -98,13 +98,14 @@ try {
                 $action .= ' | <a href="#" class="approve-po" data-id="' . (int)$row['po_id'] . '" data-ref="' . htmlspecialchars($poRefNo) . '"><span class="badge badge-primary">Approve PO</span></a>';
             }
             if ($isApproved && !$isFulfilled) {
-                $action .= ' | <a href="#" class="fulfill-po" data-id="' . (int)$row['po_id'] . '" data-ref="' . htmlspecialchars($poRefNo) . '"><span class="badge badge-warning">Fulfill</span></a>';
+                $action .= ' | <a href="#" class="fulfill-po" data-id="' . (int)$row['po_id'] . '" data-ref="' . htmlspecialchars($poRefNo) . '" data-action-label="Fulfill"><span class="badge badge-warning">Fulfill</span></a>';
             }
         } else {
             if ($isApproved) {
                 $action = '<a href="purchase_order_print?po_id=' . (int)$row['po_id'] . '" target="_blank"><span class="badge badge-info">View</span></a>';
                 if (!$isFulfilled) {
-                    $action .= ' | <a href="#" class="fulfill-po" data-id="' . (int)$row['po_id'] . '" data-ref="' . htmlspecialchars($poRefNo) . '"><span class="badge badge-warning">Fulfill</span></a>';
+                    $verifyLabel = (($_SESSION['user_type'] ?? '') === 'Purchasing') ? 'Verify' : 'Fulfill';
+                    $action .= ' | <a href="#" class="fulfill-po" data-id="' . (int)$row['po_id'] . '" data-ref="' . htmlspecialchars($poRefNo) . '" data-action-label="' . $verifyLabel . '"><span class="badge badge-warning">' . $verifyLabel . '</span></a>';
                 }
             } else {
                 $action = '<span class="badge badge-secondary">PO for Approval</span>';
