@@ -3984,6 +3984,7 @@ $('#material_name, #color, #gsm').on('input blur', buildSkuPreview);
 $(document).ready(function () {
     let itemIndex = 1;
     let itemsList = [];
+    let selectingItemOption = false;
 
     loadInventoryItems();
 
@@ -4114,7 +4115,9 @@ $(document).ready(function () {
         let keyword = input.val().toLowerCase().trim();
         let dropdown = input.siblings(".item-dropdown");
         let row = input.closest("tr");
-        let skuValue = row.find(".sku").val().toLowerCase().trim();
+
+        // Item name changes invalidate current binding until a list option is reselected.
+        row.find(".sku").val("");
 
         if (keyword.length === 0) {
             dropdown.hide().empty();
@@ -4146,6 +4149,27 @@ $(document).ready(function () {
         dropdown.html(html).show();
     });
 
+    $(document).on("blur", ".item_name", function () {
+        const input = $(this);
+        const row = input.closest("tr");
+        const typedName = input.val().trim();
+        const selectedSku = row.find(".sku").val().trim();
+
+        if (typedName === "" || selectingItemOption) {
+            return;
+        }
+
+        if (selectedSku === "") {
+            setTimeout(function () {
+                input.focus();
+            }, 0);
+        }
+    });
+
+    $(document).on("mousedown", ".item-option", function () {
+        selectingItemOption = true;
+    });
+
     $(document).on("click", ".item-option", function () {
         let sku = $(this).data("sku");
         if (!sku) return;
@@ -4169,6 +4193,11 @@ $(document).ready(function () {
         }
 
         row.find(".item-dropdown").hide().empty();
+        selectingItemOption = false;
+    });
+
+    $(document).on("mouseup", function () {
+        selectingItemOption = false;
     });
 
     $(document).on("input", ".sku", function () {
