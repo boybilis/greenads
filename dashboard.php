@@ -5754,12 +5754,13 @@ $(document).on('click', '.encode-pr-request', function(e) {
                 (res.items || []).forEach(function(item) {
                     encodePrItemsCache[item.po_item_id] = item;
                     let encoded = item.encoded === true;
+                    const lockUnitPriceInput = (!canManagePricingInventory) || encoded;
                     html += '<tr data-po-item-id="' + item.po_item_id + '">' +
                         '<td>' + encodeModalEscape(item.sku) + '</td>' +
                         '<td>' + encodeModalEscape(item.item_name) + '</td>' +
                         '<td class="text-right">' + formatPoQty(item.po_qty) + '</td>' +
                         '<td>' + encodeModalEscape(item.unit || '') + '</td>' +
-                        '<td><input type="number" class="form-control form-control-sm encode-unit-price" step="0.01" min="0" value="' + Number(item.unit_price || 0).toFixed(2) + '" ' + (encoded ? 'disabled' : '') + '></td>' +
+                        '<td><input type="number" class="form-control form-control-sm encode-unit-price" step="0.01" min="0" value="' + Number(item.unit_price || 0).toFixed(2) + '" ' + (lockUnitPriceInput ? 'readonly' : '') + '></td>' +
                         '<td>' + (encoded ? '<span class="badge badge-success">Encoded</span>' : '<a href="#" class="encode-pr-item"><span class="badge badge-warning">Encode</span></a>') + '</td>' +
                         '</tr>';
                 });

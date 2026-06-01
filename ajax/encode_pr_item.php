@@ -59,7 +59,8 @@ try {
             poi.sku,
             poi.item_name,
             poi.po_qty,
-            poi.unit
+            poi.unit,
+            COALESCE(poi.unit_price, 0) AS po_unit_price
         FROM tbl_purchase_requests pr
         INNER JOIN tbl_purchase_orders po ON po.pr_id = pr.pr_id
         INNER JOIN tbl_purchase_order_items poi ON poi.po_id = po.po_id
@@ -114,7 +115,8 @@ try {
     }
 
     if (!$canManagePricing) {
-        $unitPrice = (float)$item['unit_price'];
+        // Non-pricing users must encode using PO canvassed price, not editable inventory price.
+        $unitPrice = (float)$row['po_unit_price'];
     }
 
     $dup = $pdo->prepare("

@@ -10,9 +10,9 @@ if (!isset($_SESSION['user_code'])) {
 }
 
 
-if (!in_array($_SESSION['user_type'] ?? '', ['Admin', 'Inventory'], true)) {
+if (!in_array($_SESSION['user_type'] ?? '', ['Admin', 'Inventory', 'Purchasing'], true)) {
     http_response_code(403);
-    echo json_encode(['status' => 'error', 'message' => 'Only Admin and Inventory users can encode PR requests.']);
+    echo json_encode(['status' => 'error', 'message' => 'Only Admin, Inventory, and Purchasing users can encode PR requests.']);
     exit;
 }
 
@@ -86,7 +86,7 @@ try {
             poi.color,
             poi.po_qty,
             poi.unit,
-            COALESCE(ti.unit_price, 0) AS unit_price,
+            COALESCE(poi.unit_price, 0) AS unit_price,
             CASE WHEN ti.sku IS NULL THEN 0 ELSE 1 END AS item_exists,
             CASE WHEN ii.id IS NULL THEN 0 ELSE 1 END AS encoded
         FROM tbl_purchase_order_items poi
