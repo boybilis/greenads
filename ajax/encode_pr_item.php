@@ -13,10 +13,8 @@ if (!in_array($_SESSION['user_type'] ?? '', ['Admin', 'Inventory', 'Purchasing']
 
 $prId = (int)($_POST['pr_id'] ?? 0);
 $poItemId = (int)($_POST['po_item_id'] ?? 0);
-$unitPrice = (float)($_POST['unit_price'] ?? 0);
 $inventorySku = trim($_POST['inventory_sku'] ?? '');
 $createdBy = $_SESSION['username'] ?? $_SESSION['user_code'];
-$canManagePricing = in_array(($_SESSION['user_type'] ?? ''), ['Admin', 'Purchasing'], true);
 
 if ($prId <= 0 || $poItemId <= 0) {
     echo json_encode(['status' => 'error', 'message' => 'Invalid item reference.']);
@@ -125,10 +123,8 @@ try {
         throw new RuntimeException('Unit mismatch for ' . $targetSku . '. Inventory unit is ' . $item['unit'] . '.');
     }
 
-    if (!$canManagePricing) {
-        // Non-pricing users must encode using PO canvassed price, not editable inventory price.
-        $unitPrice = (float)$row['po_unit_price'];
-    }
+    // Encoding records the approved PO price. It is not editable during receiving.
+    $unitPrice = (float)$row['po_unit_price'];
 
     $dup = $pdo->prepare("
         SELECT COUNT(*)
@@ -164,21 +160,12 @@ try {
         $createdBy
     ]);
 
-    if ($canManagePricing) {
-        $update = $pdo->prepare("
-            UPDATE tbl_items
-            SET quantity = quantity + ?, unit_price = ?
-            WHERE sku = ?
-        ");
-        $update->execute([$quantity, $unitPrice, $targetSku]);
-    } else {
-        $update = $pdo->prepare("
-            UPDATE tbl_items
-            SET quantity = quantity + ?
-            WHERE sku = ?
-        ");
-        $update->execute([$quantity, $targetSku]);
-    }
+    $update = $pdo->prepare("
+        UPDATE tbl_items
+        SET quantity = quantity + ?
+        WHERE sku = ?
+    ");
+    $update->execute([$quantity, $targetSku]);
 
     if ($isRequestedSku && $targetSku !== $row['sku']) {
         $updatePoItem = $pdo->prepare("

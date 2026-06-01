@@ -2408,13 +2408,12 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <th>Item</th>
                 <th>Qty</th>
                 <th>Unit</th>
-                <th>Unit Price</th>
                 <th>Action</th>
               </tr>
             </thead>
             <tbody id="encodePrItemsBody">
               <tr>
-                <td colspan="6" class="text-center text-muted">Loading items...</td>
+                <td colspan="5" class="text-center text-muted">Loading items...</td>
               </tr>
             </tbody>
           </table>
@@ -3249,7 +3248,6 @@ $(document).ready(function() {
         ]
     });
 
-	const canManagePricingInventory = <?= $canManagePricing ? 'true' : 'false' ?>;
 	let inventoryInItems = [];
 
 	function escapeHtml(value) {
@@ -5738,7 +5736,7 @@ $(document).on('click', '.encode-pr-request', function(e) {
     $('#encodePoRef').text('');
     $('#encodeReceiptNo').text('');
     $('#encodeDateReceived').text('');
-    $('#encodePrItemsBody').html('<tr><td colspan="6" class="text-center text-muted">Loading items...</td></tr>');
+    $('#encodePrItemsBody').html('<tr><td colspan="5" class="text-center text-muted">Loading items...</td></tr>');
     $('#encodePrModal').modal('show');
 
     const encodeRequestController = new AbortController();
@@ -5777,19 +5775,17 @@ $(document).on('click', '.encode-pr-request', function(e) {
         (res.items || []).forEach(function(item) {
             encodePrItemsCache[item.po_item_id] = item;
             let encoded = item.encoded === true;
-            const lockUnitPriceInput = (!canManagePricingInventory) || encoded;
             html += '<tr data-po-item-id="' + item.po_item_id + '">' +
                 '<td>' + encodeModalEscape(item.sku) + '</td>' +
                 '<td>' + encodeModalEscape(item.item_name) + '</td>' +
                 '<td class="text-right">' + formatPoQty(item.po_qty) + '</td>' +
                 '<td>' + encodeModalEscape(item.unit || '') + '</td>' +
-                '<td><input type="number" class="form-control form-control-sm encode-unit-price" step="0.01" min="0" value="' + Number(item.unit_price || 0).toFixed(2) + '" ' + (lockUnitPriceInput ? 'readonly' : '') + '></td>' +
                 '<td>' + (encoded ? '<span class="badge badge-success">Encoded</span>' : '<a href="#" class="encode-pr-item"><span class="badge badge-warning">Encode</span></a>') + '</td>' +
                 '</tr>';
         });
 
         if (!html) {
-            html = '<tr><td colspan="6" class="text-center text-muted">No PO items found.</td></tr>';
+            html = '<tr><td colspan="5" class="text-center text-muted">No PO items found.</td></tr>';
         }
 
         $('#encodePrItemsBody').html(html);
@@ -5800,7 +5796,7 @@ $(document).on('click', '.encode-pr-request', function(e) {
             : error.message;
         console.error(error);
         toastr.error(message);
-        $('#encodePrItemsBody').html('<tr><td colspan="6" class="text-center text-danger">' + encodeModalEscape(message) + '</td></tr>');
+        $('#encodePrItemsBody').html('<tr><td colspan="5" class="text-center text-danger">' + encodeModalEscape(message) + '</td></tr>');
     })
     .finally(function() {
         clearTimeout(encodeRequestTimer);
@@ -5814,8 +5810,6 @@ $(document).on('click', '.encode-pr-item', function(e) {
     const btn = $(this);
     const poItemId = row.data('po-item-id');
     const prId = $('#encode_pr_id').val();
-    const unitPrice = row.find('.encode-unit-price').val();
-
     const item = encodePrItemsCache[poItemId] || {};
     const itemSku = String(item.sku || '');
 
@@ -5833,7 +5827,7 @@ $(document).on('click', '.encode-pr-item', function(e) {
         $('#description').val(item.description || '');
         $('#quantity').val(0);
         $('#unit').val(item.unit || '');
-        $('#unit_price').val(unitPrice || item.unit_price || '');
+        $('#unit_price').val(item.unit_price || '');
         $('#reorder_level').val(10);
         $('#productModal').modal('show');
         $('#material_name, #color, #gsm').trigger('input');
@@ -5847,7 +5841,6 @@ $(document).on('click', '.encode-pr-item', function(e) {
         data: {
             pr_id: prId,
             po_item_id: poItemId,
-            unit_price: unitPrice,
             inventory_sku: item.inventory_sku || ''
         },
         dataType: 'json',
@@ -5857,7 +5850,6 @@ $(document).on('click', '.encode-pr-item', function(e) {
         success: function(res) {
             if (res.status === 'success') {
                 toastr.success(res.message);
-                row.find('.encode-unit-price').prop('disabled', true);
                 row.find('td:last').html('<span class="badge badge-success">Encoded</span>');
                 stocktable.ajax.reload(null, false);
                 inventorytable.ajax.reload(null, false);
