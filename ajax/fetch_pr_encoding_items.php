@@ -25,12 +25,6 @@ if ($prId <= 0 && $poId <= 0) {
 }
 
 try {
-    $poItemColumns = $pdo->query("SHOW COLUMNS FROM tbl_purchase_order_items")->fetchAll(PDO::FETCH_COLUMN);
-    $hasDescription = in_array('description', $poItemColumns, true);
-    $hasMaterialType = in_array('material_type', $poItemColumns, true);
-    $hasColor = in_array('color', $poItemColumns, true);
-    $hasUnitPrice = in_array('unit_price', $poItemColumns, true);
-
     if ($poId > 0) {
         $headerStmt = $pdo->prepare("
             SELECT
@@ -77,39 +71,24 @@ try {
         exit;
     }
 
-    if (empty($header['receipt_no']) || empty($header['date_received'])) {
-        echo json_encode(['status' => 'error', 'message' => 'PO receipt no. and received date are required before encoding.']);
-        exit;
-    }
-
-    $descriptionSql = $hasDescription ? 'poi.description' : "''";
-    $materialTypeSql = $hasMaterialType ? 'poi.material_type' : 'NULL';
-    $colorSql = $hasColor ? 'poi.color' : 'NULL';
-    $unitPriceSql = $hasUnitPrice ? 'COALESCE(poi.unit_price, 0)' : '0';
-
     $itemStmt = $pdo->prepare("
         SELECT
             poi.po_item_id,
             poi.sku,
             poi.item_name,
-            {$descriptionSql} AS description,
-            {$materialTypeSql} AS material_type,
-            {$colorSql} AS color,
+            poi.description,
+            poi.material_type,
+            poi.color,
             poi.po_qty,
             poi.unit,
-            {$unitPriceSql} AS unit_price,
-            CASE WHEN ti.sku IS NULL THEN 0 ELSE 1 END AS item_exists,
-            CASE WHEN ii.id IS NULL THEN 0 ELSE 1 END AS encoded
+            COALESCE(poi.unit_price, 0) AS unit_price,
+            CASE WHEN ti.sku IS NULL THEN 0 ELSE 1 END AS item_exists
         FROM tbl_purchase_order_items poi
         LEFT JOIN tbl_items ti ON ti.sku = poi.sku
-        LEFT JOIN tbl_inventory_in ii
-            ON ii.sku = poi.sku
-           AND ii.receipt_no = ?
-           AND ii.po_code = ?
         WHERE poi.po_id = ?
         ORDER BY poi.item_name ASC, poi.sku ASC
     ");
-    $itemStmt->execute([$header['receipt_no'], $header['po_ref_no'], (int)$header['po_id']]);
+    $itemStmt->execute([(int)$header['po_id']]);
     $items = $itemStmt->fetchAll(PDO::FETCH_ASSOC);
 
     echo json_encode([
@@ -134,7 +113,7 @@ try {
                 'unit' => $item['unit'],
                 'unit_price' => (float)$item['unit_price'],
                 'item_exists' => (int)$item['item_exists'] === 1,
-                'encoded' => (int)$item['encoded'] === 1
+                'encoded' => false
             ];
         }, $items)
     ]);

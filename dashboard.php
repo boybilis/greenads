@@ -5773,18 +5773,19 @@ $(document).on('click', '.encode-pr-request', function(e) {
 
                 $('#encodePrItemsBody').html(html);
             } else {
-                toastr.error(res.message || 'Failed to encode PR request.');
-                $('#encodePrModal').modal('hide');
+                const message = res.message || 'Failed to load PR items.';
+                toastr.error(message);
+                $('#encodePrItemsBody').html('<tr><td colspan="6" class="text-center text-danger">' + encodeModalEscape(message) + '</td></tr>');
             }
         },
         error: function(xhr) {
             console.error(xhr.responseText);
+            let message = 'Failed to load PR items.';
             if (xhr.statusText === 'timeout') {
-                toastr.error('Loading encode items timed out. Please try again.');
-            } else {
-                toastr.error('Failed to load PR items.');
+                message = 'Loading encode items timed out. Please try again.';
             }
-            $('#encodePrModal').modal('hide');
+            toastr.error(message);
+            $('#encodePrItemsBody').html('<tr><td colspan="6" class="text-center text-danger">' + encodeModalEscape(message) + '</td></tr>');
         }
     });
 });
