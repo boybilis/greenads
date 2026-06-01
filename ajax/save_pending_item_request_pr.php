@@ -13,6 +13,15 @@ if (!isset($_SESSION['user_code'])) {
     exit;
 }
 
+if (($_SESSION['user_type'] ?? '') === 'Inventory') {
+    http_response_code(403);
+    echo json_encode([
+        'status' => 'error',
+        'message' => 'Inventory users are not allowed to create PR requests.'
+    ]);
+    exit;
+}
+
 $requestedBy = $_SESSION['username'] ?? $_SESSION['user_code'];
 $requestedByCode = $_SESSION['user_code'];
 

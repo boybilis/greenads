@@ -251,7 +251,7 @@ tr.pending-approval-row td {
             </a>
           </li>
 		  <?php } ?>
-		  <?php if (in_array($sidebarUserType, ['Admin', 'Manager', 'Inventory', 'Purchasing'], true)) { ?>
+		  <?php if (in_array($sidebarUserType, ['Admin', 'Manager', 'Purchasing'], true)) { ?>
 		   <li class="nav-item">
             <a href="#" data-target="product" class="nav-link" id="showProduct">
               <i class="nav-icon fas fa-file"></i>

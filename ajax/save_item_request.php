@@ -4,6 +4,10 @@ require_once 'config.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
+    if (($_SESSION['user_type'] ?? '') === 'Inventory') {
+        exit("Inventory users are not allowed to create item requests.");
+    }
+
   
 
     $item_name  = $_POST['item_name'] ?? '';
