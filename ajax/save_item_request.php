@@ -9,7 +9,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $item_name  = $_POST['item_name'] ?? '';
     $item_color = $_POST['item_color'] ?? '';
     $desc       = $_POST['description'] ?? '';
-    $user       = $_SESSION['username'] ?? 'Unknown';
+    $userCode   = $_SESSION['user_code'] ?? '';
+    $username   = $_SESSION['username'] ?? '';
+
+    if ($userCode === '' && $username === '') {
+        exit("Session expired. Please log in again.");
+    }
 
     if (empty($item_name)) {
         exit("Item name is required");
@@ -20,7 +25,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         VALUES (?, ?, ?, ?)
     ");
 
-    $stmt->execute([$item_name, $item_color, $desc, $user]);
+    // Store requester as user_code for consistent filtering.
+    $requestedBy = $userCode !== '' ? $userCode : $username;
+    $stmt->execute([$item_name, $item_color, $desc, $requestedBy]);
 
     echo "success"; // IMPORTANT for toastr
 }

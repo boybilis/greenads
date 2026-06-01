@@ -5,15 +5,16 @@ header('Content-Type: application/json');
 
 $userType = $_SESSION['user_type'] ?? '';
 $userCode = $_SESSION['user_code'] ?? '';
+$username = $_SESSION['username'] ?? '';
 
 if ($userType === 'Manager') {
     $stmt = $pdo->prepare("
         SELECT *
         FROM item_requests
-        WHERE requested_by = ?
+        WHERE requested_by = ? OR requested_by = ?
         ORDER BY id DESC
     ");
-    $stmt->execute([$userCode]);
+    $stmt->execute([$userCode, $username]);
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } else {
     $rows = $db->getAllRecords('item_requests');
