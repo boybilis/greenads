@@ -25,18 +25,10 @@ if ($prId <= 0) {
 
 try {
     $poItemColumns = $pdo->query("SHOW COLUMNS FROM tbl_purchase_order_items")->fetchAll(PDO::FETCH_COLUMN);
-    if (!in_array('description', $poItemColumns, true)) {
-        $pdo->exec("ALTER TABLE tbl_purchase_order_items ADD description TEXT NULL AFTER item_name");
-    }
-    if (!in_array('material_type', $poItemColumns, true)) {
-        $pdo->exec("ALTER TABLE tbl_purchase_order_items ADD material_type VARCHAR(100) DEFAULT NULL AFTER item_name");
-    }
-    if (!in_array('color', $poItemColumns, true)) {
-        $pdo->exec("ALTER TABLE tbl_purchase_order_items ADD color VARCHAR(100) DEFAULT NULL AFTER description");
-    }
-    if (!in_array('unit_price', $poItemColumns, true)) {
-        $pdo->exec("ALTER TABLE tbl_purchase_order_items ADD unit_price DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER po_qty");
-    }
+    $hasDescription = in_array('description', $poItemColumns, true);
+    $hasMaterialType = in_array('material_type', $poItemColumns, true);
+    $hasColor = in_array('color', $poItemColumns, true);
+    $hasUnitPrice = in_array('unit_price', $poItemColumns, true);
 
     $pdo->exec("CREATE TABLE IF NOT EXISTS tbl_inventory_in (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -90,17 +82,22 @@ try {
         exit;
     }
 
+    $descriptionSql = $hasDescription ? 'poi.description' : "''";
+    $materialTypeSql = $hasMaterialType ? 'poi.material_type' : 'NULL';
+    $colorSql = $hasColor ? 'poi.color' : 'NULL';
+    $unitPriceSql = $hasUnitPrice ? 'COALESCE(poi.unit_price, 0)' : '0';
+
     $itemStmt = $pdo->prepare("
         SELECT
             poi.po_item_id,
             poi.sku,
             poi.item_name,
-            poi.description,
-            poi.material_type,
-            poi.color,
+            {$descriptionSql} AS description,
+            {$materialTypeSql} AS material_type,
+            {$colorSql} AS color,
             poi.po_qty,
             poi.unit,
-            COALESCE(poi.unit_price, 0) AS unit_price,
+            {$unitPriceSql} AS unit_price,
             CASE WHEN ti.sku IS NULL THEN 0 ELSE 1 END AS item_exists,
             CASE WHEN ii.id IS NULL THEN 0 ELSE 1 END AS encoded
         FROM tbl_purchase_order_items poi
@@ -142,6 +139,7 @@ try {
         }, $items)
     ]);
 } catch (Exception $e) {
+    error_log('fetch_pr_encoding_items failed: ' . $e->getMessage());
     http_response_code(500);
     echo json_encode(['status' => 'error', 'message' => "Request failed."]);
 }
