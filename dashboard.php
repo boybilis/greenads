@@ -1452,7 +1452,7 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 			</div> <!-- end add project form div -->
 		
 		
-		<div class="col-md-12">
+			<div class="col-md-12">
 		<!-- TABLE: LATEST ORDERS -->
             <div class="card">
               <div class="card-header border-transparent">
@@ -1497,6 +1497,33 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <!-- /.card -->
 			</div>
 			<!-- .col-md-8 -->
+
+			<div class="col-md-12">
+            <div class="card">
+              <div class="card-header border-warning bg-light">
+                <h3 class="card-title">Generated PR Requests (My Requests)</h3>
+              </div>
+              <div class="card-body p-3">
+                <div class="table-responsive">
+                  <table class="table table-bordered table-striped m-0" id="my-generated-pr-list">
+                    <thead>
+                      <tr>
+                        <th>PR No.</th>
+                        <th>Date</th>
+                        <th>Project Code</th>
+                        <th>Requested By</th>
+                        <th>Items</th>
+                        <th>Total Qty</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+			</div>
 		
 		</div> <!-- end row project details-->
 		
@@ -2963,6 +2990,7 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 <script>
 let ortable, itemspo, stocktable, inventorytable, invLowStockTable, invInHistoryTable, invOutHistoryTable, projectMrReportTable, supplierTable, purchaseRequestTable, inventoryPurchaseRequestTable, purchaseOrderTable, userTable, auditLogTable;
+let myGeneratedPrTable;
 let encodePrItemsCache = {};
 let pendingEncodeAfterProductSave = null;
 let purchaseRequestItemsCache = <?= json_encode(array_map(function($item) {
@@ -3652,6 +3680,25 @@ $(document).ready(function() {
       { data: 'action' }
     ]
   });
+
+  if ($('#my-generated-pr-list').length) {
+    myGeneratedPrTable = $('#my-generated-pr-list').DataTable({
+      ajax: 'ajax/fetch_my_purchase_requests.php?mine=1',
+      responsive: true,
+      autoWidth: false,
+      order: [[0, 'desc']],
+      columns: [
+        { data: 'pr_ref_no' },
+        { data: 'request_date' },
+        { data: 'proj_code' },
+        { data: 'requested_by' },
+        { data: 'item_count' },
+        { data: 'total_qty' },
+        { data: 'status_badge' },
+        { data: 'action' }
+      ]
+    });
+  }
   
   //----------------------------
  

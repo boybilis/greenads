@@ -18,8 +18,12 @@ try {
 
     $where = '';
     $params = [];
+    $onlyMine = (($_GET['mine'] ?? '') === '1');
 
-    if (!in_array($_SESSION['user_type'] ?? '', ['Admin', 'Inventory'], true)) {
+    if ($onlyMine) {
+        $where = 'WHERE pr.requested_by_code = ?';
+        $params[] = $_SESSION['user_code'];
+    } elseif (!in_array($_SESSION['user_type'] ?? '', ['Admin', 'Inventory'], true)) {
         $where = 'WHERE pr.requested_by_code = ?';
         $params[] = $_SESSION['user_code'];
     }
