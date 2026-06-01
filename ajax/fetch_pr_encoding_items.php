@@ -31,25 +31,6 @@ try {
     $hasColor = in_array('color', $poItemColumns, true);
     $hasUnitPrice = in_array('unit_price', $poItemColumns, true);
 
-    $pdo->exec("CREATE TABLE IF NOT EXISTS tbl_inventory_in (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        sku VARCHAR(100) NOT NULL,
-        item_name VARCHAR(255) NOT NULL,
-        quantity DECIMAL(12,2) NOT NULL,
-        unit VARCHAR(50) NOT NULL,
-        unit_price DECIMAL(12,2) NOT NULL,
-        stock_before DECIMAL(12,2) NOT NULL DEFAULT 0,
-        stock_after DECIMAL(12,2) NOT NULL DEFAULT 0,
-        receipt_no VARCHAR(100) NOT NULL,
-        receipt_date DATE NOT NULL,
-        po_code VARCHAR(100) DEFAULT NULL,
-        created_by VARCHAR(100) DEFAULT NULL,
-        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        INDEX idx_inventory_in_sku (sku),
-        INDEX idx_inventory_in_receipt_no (receipt_no),
-        INDEX idx_inventory_in_po_code (po_code)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-
     if ($poId > 0) {
         $headerStmt = $pdo->prepare("
             SELECT

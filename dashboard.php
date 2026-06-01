@@ -5743,6 +5743,7 @@ $(document).on('click', '.encode-pr-request', function(e) {
         type: 'GET',
         data: { pr_id: prId, po_id: poId },
         dataType: 'json',
+        timeout: 15000,
         success: function(res) {
             if (res.status === 'success') {
                 $('#encodePrRef').text(res.header.pr_ref_no || '');
@@ -5778,7 +5779,11 @@ $(document).on('click', '.encode-pr-request', function(e) {
         },
         error: function(xhr) {
             console.error(xhr.responseText);
-            toastr.error('Failed to load PR items.');
+            if (xhr.statusText === 'timeout') {
+                toastr.error('Loading encode items timed out. Please try again.');
+            } else {
+                toastr.error('Failed to load PR items.');
+            }
             $('#encodePrModal').modal('hide');
         }
     });
