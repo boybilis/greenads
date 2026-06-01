@@ -4160,6 +4160,7 @@ $(document).ready(function () {
         }
 
         if (selectedSku === "") {
+            alert('Item is not on the inventory list. Please "Request materials for purchase" first in the Item List menu.');
             setTimeout(function () {
                 input.focus();
             }, 0);
