@@ -5741,56 +5741,69 @@ $(document).on('click', '.encode-pr-request', function(e) {
     $('#encodePrItemsBody').html('<tr><td colspan="6" class="text-center text-muted">Loading items...</td></tr>');
     $('#encodePrModal').modal('show');
 
-    $.ajax({
-        url: 'ajax/fetch_pr_encoding_items.php',
-        type: 'GET',
-        data: { pr_id: prId, po_id: poId, _: Date.now() },
-        dataType: 'json',
-        cache: false,
-        timeout: 15000,
-        success: function(res) {
-            if (res.status === 'success') {
-                $('#encodePrRef').text(res.header.pr_ref_no || '');
-                $('#encodePoRef').text(res.header.po_ref_no || '');
-                $('#encodeReceiptNo').text(res.header.receipt_no || '');
-                $('#encodeDateReceived').text(res.header.date_received || '');
+    const encodeRequestController = new AbortController();
+    const encodeRequestTimer = setTimeout(function() {
+        encodeRequestController.abort();
+    }, 15000);
+    const encodeRequestUrl = 'ajax/fetch_pr_encoding_items.php?' + new URLSearchParams({
+        pr_id: prId,
+        po_id: poId,
+        _: Date.now()
+    }).toString();
 
-                let html = '';
-                encodePrItemsCache = {};
-                (res.items || []).forEach(function(item) {
-                    encodePrItemsCache[item.po_item_id] = item;
-                    let encoded = item.encoded === true;
-                    const lockUnitPriceInput = (!canManagePricingInventory) || encoded;
-                    html += '<tr data-po-item-id="' + item.po_item_id + '">' +
-                        '<td>' + encodeModalEscape(item.sku) + '</td>' +
-                        '<td>' + encodeModalEscape(item.item_name) + '</td>' +
-                        '<td class="text-right">' + formatPoQty(item.po_qty) + '</td>' +
-                        '<td>' + encodeModalEscape(item.unit || '') + '</td>' +
-                        '<td><input type="number" class="form-control form-control-sm encode-unit-price" step="0.01" min="0" value="' + Number(item.unit_price || 0).toFixed(2) + '" ' + (lockUnitPriceInput ? 'readonly' : '') + '></td>' +
-                        '<td>' + (encoded ? '<span class="badge badge-success">Encoded</span>' : '<a href="#" class="encode-pr-item"><span class="badge badge-warning">Encode</span></a>') + '</td>' +
-                        '</tr>';
-                });
-
-                if (!html) {
-                    html = '<tr><td colspan="6" class="text-center text-muted">No items found.</td></tr>';
-                }
-
-                $('#encodePrItemsBody').html(html);
-            } else {
-                const message = res.message || 'Failed to load PR items.';
-                toastr.error(message);
-                $('#encodePrItemsBody').html('<tr><td colspan="6" class="text-center text-danger">' + encodeModalEscape(message) + '</td></tr>');
-            }
-        },
-        error: function(xhr) {
-            console.error(xhr.responseText);
-            let message = 'Failed to load PR items.';
-            if (xhr.statusText === 'timeout') {
-                message = 'Loading encode items timed out. Please try again.';
-            }
-            toastr.error(message);
-            $('#encodePrItemsBody').html('<tr><td colspan="6" class="text-center text-danger">' + encodeModalEscape(message) + '</td></tr>');
+    fetch(encodeRequestUrl, {
+        cache: 'no-store',
+        credentials: 'same-origin',
+        signal: encodeRequestController.signal
+    })
+    .then(function(response) {
+        if (!response.ok) {
+            throw new Error('Request failed with status ' + response.status + '.');
         }
+        return response.json();
+    })
+    .then(function(res) {
+        if (res.status !== 'success') {
+            throw new Error(res.message || 'Failed to load PR items.');
+        }
+
+        $('#encodePrRef').text(res.header.pr_ref_no || '');
+        $('#encodePoRef').text(res.header.po_ref_no || '');
+        $('#encodeReceiptNo').text(res.header.receipt_no || '');
+        $('#encodeDateReceived').text(res.header.date_received || '');
+
+        let html = '';
+        encodePrItemsCache = {};
+        (res.items || []).forEach(function(item) {
+            encodePrItemsCache[item.po_item_id] = item;
+            let encoded = item.encoded === true;
+            const lockUnitPriceInput = (!canManagePricingInventory) || encoded;
+            html += '<tr data-po-item-id="' + item.po_item_id + '">' +
+                '<td>' + encodeModalEscape(item.sku) + '</td>' +
+                '<td>' + encodeModalEscape(item.item_name) + '</td>' +
+                '<td class="text-right">' + formatPoQty(item.po_qty) + '</td>' +
+                '<td>' + encodeModalEscape(item.unit || '') + '</td>' +
+                '<td><input type="number" class="form-control form-control-sm encode-unit-price" step="0.01" min="0" value="' + Number(item.unit_price || 0).toFixed(2) + '" ' + (lockUnitPriceInput ? 'readonly' : '') + '></td>' +
+                '<td>' + (encoded ? '<span class="badge badge-success">Encoded</span>' : '<a href="#" class="encode-pr-item"><span class="badge badge-warning">Encode</span></a>') + '</td>' +
+                '</tr>';
+        });
+
+        if (!html) {
+            html = '<tr><td colspan="6" class="text-center text-muted">No PO items found.</td></tr>';
+        }
+
+        $('#encodePrItemsBody').html(html);
+    })
+    .catch(function(error) {
+        const message = error.name === 'AbortError'
+            ? 'Loading PO items timed out. Please try again.'
+            : error.message;
+        console.error(error);
+        toastr.error(message);
+        $('#encodePrItemsBody').html('<tr><td colspan="6" class="text-center text-danger">' + encodeModalEscape(message) + '</td></tr>');
+    })
+    .finally(function() {
+        clearTimeout(encodeRequestTimer);
     });
 });
 

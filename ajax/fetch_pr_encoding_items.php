@@ -84,10 +84,8 @@ try {
             poi.color,
             poi.po_qty,
             poi.unit,
-            COALESCE(poi.unit_price, 0) AS unit_price,
-            CASE WHEN ti.sku IS NULL THEN 0 ELSE 1 END AS item_exists
+            COALESCE(poi.unit_price, 0) AS unit_price
         FROM tbl_purchase_order_items poi
-        LEFT JOIN tbl_items ti ON ti.sku = poi.sku
         WHERE poi.po_id = ?
         ORDER BY poi.item_name ASC, poi.sku ASC
     ");
@@ -115,7 +113,7 @@ try {
                 'po_qty' => (float)$item['po_qty'],
                 'unit' => $item['unit'],
                 'unit_price' => (float)$item['unit_price'],
-                'item_exists' => (int)$item['item_exists'] === 1,
+                'item_exists' => stripos((string)$item['sku'], 'REQ') !== 0,
                 'encoded' => false
             ];
         }, $items)
