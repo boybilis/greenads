@@ -2881,15 +2881,23 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <th>Item</th>
                 <th width="120">Requested</th>
                 <th width="150">PO Qty</th>
+                <th width="130">Unit Price</th>
+                <th width="140">Total Price</th>
               </tr>
             </thead>
             <tbody id="poItemsBody">
               <tr>
-                <td colspan="3" class="text-center text-muted">
+                <td colspan="5" class="text-center text-muted">
                   No items loaded
                 </td>
               </tr>
             </tbody>
+            <tfoot>
+              <tr>
+                <th colspan="4" class="text-right">Grand Total</th>
+                <th class="text-right" id="poGrandTotal">0.00</th>
+              </tr>
+            </tfoot>
           </table>
         </div>
 
@@ -5390,8 +5398,11 @@ $(document).on('click', '.create-po-request', function (e) {
        let html = '';
 
 (res.items || []).forEach(item => {
+    const unitPrice = Number(item.unit_price || 0);
+    const requestQty = Number(item.request_qty || 0);
+    const totalPrice = requestQty * unitPrice;
     html += `
-        <tr data-sku="${item.sku}">
+        <tr data-sku="${item.sku}" data-unit-price="${unitPrice}">
             <td>
                 <strong>${item.item_name}</strong><br>
 
@@ -5405,12 +5416,14 @@ $(document).on('click', '.create-po-request', function (e) {
                 </small>
             </td>
 
-            <td>${item.request_qty} ${item.unit}</td>
+            <td>${requestQty} ${item.unit}</td>
 
             <td>
                 <input type="number" class="form-control po-qty" 
-                       value="${item.request_qty}" min="0.01" step="0.01">
+                       value="${requestQty}" min="0.01" step="0.01">
             </td>
+            <td class="text-right po-unit-price">${formatPoQty(unitPrice)}</td>
+            <td class="text-right po-total-price">${formatPoQty(totalPrice)}</td>
         </tr>
     `;
 });
@@ -5418,10 +5431,20 @@ $(document).on('click', '.create-po-request', function (e) {
         $('#poItemsBody').html(html);
         $('#poModal').data('pr-id', prId); // store PR ID
 		$('#poPrRef').text(res.header.pr_ref_no || '');
+        updatePoGrandTotal();
     })
     .fail(() => {
         toastr.error('Error loading PR items');
     });
+});
+
+$(document).on('input', '#poItemsBody .po-qty', function() {
+    const $row = $(this).closest('tr');
+    const qty = Number($(this).val() || 0);
+    const unitPrice = Number($row.data('unit-price') || 0);
+    const totalPrice = qty * unitPrice;
+    $row.find('.po-total-price').text(formatPoQty(totalPrice));
+    updatePoGrandTotal();
 });
 
 function formatPoQty(value) {
@@ -5429,6 +5452,16 @@ function formatPoQty(value) {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
     });
+}
+
+function updatePoGrandTotal() {
+    let grandTotal = 0;
+    $('#poItemsBody tr').each(function() {
+        const qty = Number($(this).find('.po-qty').val() || 0);
+        const unitPrice = Number($(this).data('unit-price') || 0);
+        grandTotal += qty * unitPrice;
+    });
+    $('#poGrandTotal').text(formatPoQty(grandTotal));
 }
 
 function printPurchaseOrder(po, previewWin) {

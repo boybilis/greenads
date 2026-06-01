@@ -45,7 +45,8 @@ try {
         ti.color,
         pri.request_qty,
         pri.unit,
-        pri.available_qty
+        pri.available_qty,
+        COALESCE(ti.unit_price, 0) AS unit_price
     FROM tbl_purchase_request_items pri
     LEFT JOIN tbl_items ti ON pri.sku = ti.sku
     WHERE pri.pr_id = ?
@@ -63,7 +64,8 @@ while ($row = $itemStmt->fetch(PDO::FETCH_ASSOC)) {
         'color' => $row['color'] ?? 'N/A',
         'request_qty' => (float)$row['request_qty'],
         'unit' => $row['unit'],
-        'available_qty' => (float)$row['available_qty']
+        'available_qty' => (float)$row['available_qty'],
+        'unit_price' => (float)$row['unit_price']
     ];
 }
 
