@@ -24,6 +24,17 @@ if ($prId <= 0 || $poItemId <= 0) {
 }
 
 try {
+    $poItemColumns = $pdo->query("SHOW COLUMNS FROM tbl_purchase_order_items")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('material_type', $poItemColumns, true)) {
+        $pdo->exec("ALTER TABLE tbl_purchase_order_items ADD material_type VARCHAR(100) DEFAULT NULL AFTER item_name");
+    }
+    if (!in_array('color', $poItemColumns, true)) {
+        $pdo->exec("ALTER TABLE tbl_purchase_order_items ADD color VARCHAR(100) DEFAULT NULL AFTER description");
+    }
+    if (!in_array('unit_price', $poItemColumns, true)) {
+        $pdo->exec("ALTER TABLE tbl_purchase_order_items ADD unit_price DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER po_qty");
+    }
+
     $pdo->exec("CREATE TABLE IF NOT EXISTS tbl_inventory_in (
         id INT AUTO_INCREMENT PRIMARY KEY,
         sku VARCHAR(100) NOT NULL,
