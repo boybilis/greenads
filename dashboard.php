@@ -1127,7 +1127,7 @@ if (!isset($_SESSION['user_type']) ||
 
 <?php } elseif (($_SESSION['user_type'] ?? '') === 'Manager') {?>
 <button class="btn btn-warning" data-toggle="modal" data-target="#itemRequestModal">
-  Request Materials for Purchase
+  Request NEW Materials for Purchase
 </button>
 
 <?php } ?>
@@ -1145,7 +1145,7 @@ if (!isset($_SESSION['user_type']) ||
 		<!-- TABLE: LATEST ORDERS -->
             <div class="card">
               <div class="card-header border-warning">
-                <h3 class="card-title">Items for Purchase Request</h3>
+                <h3 class="card-title">NEW Items for Purchase Request</h3>
 
                
               </div>
