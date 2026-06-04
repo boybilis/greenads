@@ -40,13 +40,18 @@ if ($qty > $reorderLevel) {
             <a href="javascript:void(0)" class="editBtn" data-id="'.$row['id'].'">
                 <span class="badge badge-warning">Edit</span>
             </a>
-            |
-            <a href="javascript:void(0)" class="deleteBtn" data-id="'.$row['id'].'">
-                <span class="badge badge-danger">Delete</span>
-            </a>
         '; }else{
 			$action='';
 		}
+
+        if (in_array($_SESSION['user_type'] ?? '', ['Admin', 'Inventory'], true)) {
+            $action .= '
+                |
+                <a href="javascript:void(0)" class="deleteBtn" data-id="'.$row['id'].'">
+                    <span class="badge badge-danger">Delete</span>
+                </a>
+            ';
+        }
 
         $data[] = [
             $row['sku'],

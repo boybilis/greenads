@@ -101,12 +101,18 @@ try {
             if ($isApproved && !$isVerified) {
                 $action .= ' | <a href="#" class="fulfill-po" data-id="' . (int)$row['po_id'] . '" data-ref="' . htmlspecialchars($poRefNo) . '" data-action-label="Fulfill"><span class="badge badge-warning">Fulfill</span></a>';
             }
+            if (!$isVerified) {
+                $action .= ' | <a href="#" class="delete-po-request" data-id="' . (int)$row['po_id'] . '"><span class="badge badge-danger">Delete</span></a>';
+            }
         } else {
             if ($isApproved) {
                 $action = '<a href="purchase_order_print?po_id=' . (int)$row['po_id'] . '" target="_blank"><span class="badge badge-info">View</span></a>';
                 if (!$isVerified) {
                     $verifyLabel = (($_SESSION['user_type'] ?? '') === 'Purchasing') ? 'Verify' : 'Fulfill';
                     $action .= ' | <a href="#" class="fulfill-po" data-id="' . (int)$row['po_id'] . '" data-ref="' . htmlspecialchars($poRefNo) . '" data-action-label="' . $verifyLabel . '"><span class="badge badge-warning">' . $verifyLabel . '</span></a>';
+                }
+                if (!$isVerified && ($_SESSION['user_type'] ?? '') === 'Purchasing') {
+                    $action .= ' | <a href="#" class="delete-po-request" data-id="' . (int)$row['po_id'] . '"><span class="badge badge-danger">Delete</span></a>';
                 }
             } else {
                 $action = '<span class="badge badge-secondary">PO for Approval</span>';

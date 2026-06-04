@@ -4016,6 +4016,47 @@ $('#material_name, #color, #gsm').on('input blur', buildSkuPreview);
         });
     });
 
+    $(document).on('click', '.deleteBtn', function(e) {
+        e.preventDefault();
+
+        const itemId = $(this).data('id');
+        if (!itemId) {
+            toastr.error('Invalid item reference.');
+            return;
+        }
+
+        if (!confirm('Delete this item? This is only allowed when the item has no transaction history.')) {
+            return;
+        }
+
+        $.ajax({
+            url: 'ajax/delete_item.php',
+            type: 'POST',
+            data: { id: itemId },
+            dataType: 'json',
+            success: function(res) {
+                if (res.status === 'success') {
+                    toastr.success(res.message || 'Item deleted.');
+                    if (stocktable) {
+                        stocktable.ajax.reload(null, false);
+                    }
+                    if (inventorytable) {
+                        inventorytable.ajax.reload(null, false);
+                    }
+                    if (invLowStockTable) {
+                        invLowStockTable.ajax.reload(null, false);
+                    }
+                } else {
+                    toastr.error(res.message || 'Unable to delete item.');
+                }
+            },
+            error: function(xhr) {
+                console.error(xhr.responseText);
+                toastr.error('Unable to delete item.');
+            }
+        });
+    });
+
     $('#productModal').on('hidden.bs.modal', function() {
         $('#productModalLabel').text('Add Material');
         $('#productForm')[0].reset();
@@ -4448,6 +4489,39 @@ $(document).on("click", ".claim-or", function(e) {
     error: function(xhr) {
       console.error(xhr.responseText);
       toastr.error("Claim failed.");
+    }
+  });
+});
+
+$(document).on("click", ".delete-or", function(e) {
+  e.preventDefault();
+
+  let orId = $(this).data("id");
+  if (!orId) {
+    toastr.error("Invalid MR reference.");
+    return;
+  }
+
+  if (!confirm("Delete this pending material request?")) {
+    return;
+  }
+
+  $.ajax({
+    url: "ajax/delete_or.php",
+    type: "POST",
+    data: { or_id: orId },
+    dataType: "json",
+    success: function(res) {
+      if (res.status === "success") {
+        toastr.success(res.message || "Material request deleted.");
+        ortable.ajax.reload(null, false);
+      } else {
+        toastr.error(res.message || "Delete failed.");
+      }
+    },
+    error: function(xhr) {
+      console.error(xhr.responseText);
+      toastr.error("Delete failed.");
     }
   });
 });
@@ -5644,6 +5718,47 @@ $(document).on('click', '.receive-pr-items', function(e) {
     });
 });
 
+$(document).on('click', '.delete-pr-request', function(e) {
+    e.preventDefault();
+
+    const prId = $(this).data('id');
+    if (!prId) {
+        toastr.error('Invalid PR reference.');
+        return;
+    }
+
+    if (!confirm('Delete this purchase request?')) {
+        return;
+    }
+
+    $.ajax({
+        url: 'ajax/delete_purchase_request.php',
+        type: 'POST',
+        dataType: 'json',
+        data: { pr_id: prId },
+        success: function(res) {
+            if (res.status === 'success') {
+                toastr.success(res.message || 'Purchase request deleted.');
+                if (purchaseRequestTable) {
+                    purchaseRequestTable.ajax.reload(null, false);
+                }
+                if (inventoryPurchaseRequestTable) {
+                    inventoryPurchaseRequestTable.ajax.reload(null, false);
+                }
+                if (myGeneratedPrTable) {
+                    myGeneratedPrTable.ajax.reload(null, false);
+                }
+            } else {
+                toastr.error(res.message || 'Delete failed.');
+            }
+        },
+        error: function(xhr) {
+            console.error(xhr.responseText);
+            toastr.error('Delete failed.');
+        }
+    });
+});
+
 $(document).on('click', '.approve-po', function(e) {
     e.preventDefault();
 
@@ -5677,6 +5792,50 @@ $(document).on('click', '.approve-po', function(e) {
         error: function(xhr) {
             console.error(xhr.responseText);
             toastr.error('Failed to approve PO.');
+        }
+    });
+});
+
+$(document).on('click', '.delete-po-request', function(e) {
+    e.preventDefault();
+
+    const poId = $(this).data('id');
+    if (!poId) {
+        toastr.error('Invalid PO reference.');
+        return;
+    }
+
+    if (!confirm('Delete this purchase order? Linked PR will be reopened when applicable.')) {
+        return;
+    }
+
+    $.ajax({
+        url: 'ajax/delete_purchase_order.php',
+        type: 'POST',
+        dataType: 'json',
+        data: { po_id: poId },
+        success: function(res) {
+            if (res.status === 'success') {
+                toastr.success(res.message || 'Purchase order deleted.');
+                if (purchaseOrderTable) {
+                    purchaseOrderTable.ajax.reload(null, false);
+                }
+                if (purchaseRequestTable) {
+                    purchaseRequestTable.ajax.reload(null, false);
+                }
+                if (inventoryPurchaseRequestTable) {
+                    inventoryPurchaseRequestTable.ajax.reload(null, false);
+                }
+                if (myGeneratedPrTable) {
+                    myGeneratedPrTable.ajax.reload(null, false);
+                }
+            } else {
+                toastr.error(res.message || 'Delete failed.');
+            }
+        },
+        error: function(xhr) {
+            console.error(xhr.responseText);
+            toastr.error('Delete failed.');
         }
     });
 });

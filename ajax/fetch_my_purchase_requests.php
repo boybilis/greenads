@@ -71,6 +71,9 @@ try {
         if (in_array($userType, ['Admin', 'Inventory'], true) && $status === 'PO Fulfilled') {
             $action .= ' <a href="#" class="encode-pr-request" data-id="' . (int)$row['pr_id'] . '" data-po-id="' . (int)$row['po_id'] . '"><span class="badge badge-success">Encode</span></a>';
         }
+        if (!in_array($status, ['PO Requested', 'PO Fulfilled', 'Encoded'], true)) {
+            $action .= ' <a href="#" class="delete-pr-request" data-id="' . (int)$row['pr_id'] . '"><span class="badge badge-danger">Delete</span></a>';
+        }
 
         $data[] = [
             'pr_ref_no' => htmlspecialchars($row['pr_ref_no'] ?: ('PR-' . str_pad((string)$row['pr_id'], 6, '0', STR_PAD_LEFT))),

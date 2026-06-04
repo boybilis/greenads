@@ -113,6 +113,15 @@ try {
             );
         }
 
+        if (!in_array($status, ['PO Requested', 'PO Fulfilled', 'Encoded'], true)) {
+            $action .= sprintf(
+                ' <a href="#" class="delete-pr-request" data-id="%d">
+                    <span class="badge badge-danger">Delete</span>
+                 </a>',
+                (int)$row['pr_id']
+            );
+        }
+
         $data[] = [
             'pr_id' => (int)$row['pr_id'],
             'items' => $items,
