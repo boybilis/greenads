@@ -4052,7 +4052,8 @@ $('#material_name, #color, #gsm').on('input blur', buildSkuPreview);
             },
             error: function(xhr) {
                 console.error(xhr.responseText);
-                toastr.error('Unable to delete item.');
+                const message = xhr.responseJSON?.message || 'Unable to delete item.';
+                toastr.error(message);
             }
         });
     });

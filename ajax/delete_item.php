@@ -23,6 +23,29 @@ if ($itemId <= 0) {
     exit;
 }
 
+function delete_item_table_exists(PDO $pdo, string $table): bool {
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*)
+        FROM information_schema.TABLES
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = ?
+    ");
+    $stmt->execute([$table]);
+    return (int)$stmt->fetchColumn() > 0;
+}
+
+function delete_item_column_exists(PDO $pdo, string $table, string $column): bool {
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*)
+        FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = ?
+          AND COLUMN_NAME = ?
+    ");
+    $stmt->execute([$table, $column]);
+    return (int)$stmt->fetchColumn() > 0;
+}
+
 try {
     $itemStmt = $pdo->prepare("SELECT id, sku, material_name FROM tbl_items WHERE id = ? LIMIT 1");
     $itemStmt->execute([$itemId]);
@@ -43,9 +66,7 @@ try {
     ];
 
     foreach ($checks as [$table, $column, $label]) {
-        $existsStmt = $pdo->prepare("SHOW TABLES LIKE ?");
-        $existsStmt->execute([$table]);
-        if (!$existsStmt->fetchColumn()) {
+        if (!delete_item_table_exists($pdo, $table) || !delete_item_column_exists($pdo, $table, $column)) {
             continue;
         }
 
@@ -66,9 +87,9 @@ try {
     audit_log($pdo, 'DELETE', 'Items', $sku, 'Deleted item ' . ($item['material_name'] ?? '') . '.');
 
     echo json_encode(['status' => 'success', 'message' => 'Item deleted successfully.']);
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log('delete_item failed: ' . $e->getMessage());
     http_response_code(500);
-    echo json_encode(['status' => 'error', 'message' => 'Delete failed.']);
+    echo json_encode(['status' => 'error', 'message' => 'Delete failed: ' . $e->getMessage()]);
 }
 ?>
