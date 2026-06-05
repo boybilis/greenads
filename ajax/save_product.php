@@ -88,6 +88,23 @@ if($pid!=""){
 	//}
 }
 
+        $newSku = generate_sku($_POST['material_name'] ?? '', $_POST['color'] ?? '', $_POST['gsm'] ?? '');
+        if ($newSku === '') {
+            echo 2;
+            exit;
+        }
+
+        $skuCheckStmt = $pdo->prepare("SELECT COUNT(*) FROM tbl_items WHERE sku = ? AND id <> ?");
+        $skuCheckStmt->execute([$newSku, $pid]);
+        if ((int)$skuCheckStmt->fetchColumn() > 0) {
+            echo 3;
+            exit;
+        }
+
+        $set['sku'] = $newSku;
+        $_POST['sku'] = $newSku;
+        $sku = $newSku;
+
         if (!$canManagePricing) {
             $set['unit_price'] = $before['unit_price'] ?? 0;
         }

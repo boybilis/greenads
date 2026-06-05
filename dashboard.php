@@ -3961,6 +3961,8 @@ $('#material_name, #color, #gsm').on('input blur', buildSkuPreview);
 				  
 					 
 					
+				} else if (data == 3 || parseInt(data) == 3) {
+				 toastr.error("SKU already exists for another item.");
 				} else {
 				 toastr.error("Something went wrong!");
 				  
