@@ -31,6 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
 
         $creatorType = $_SESSION['user_type'] ?? '';
+        $postedProjectCode = trim((string)($_POST['proj_code'] ?? ''));
         $approvalStatus = $creatorType === 'Manager' ? 0 : 1;
         $projectManagerCode = trim((string)($_POST['proj_mgr'] ?? ''));
         if ($creatorType === 'Manager') {
@@ -39,6 +40,71 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         if ($projectManagerCode === '') {
             throw new Exception('Project manager is required.');
+        }
+
+        if ($postedProjectCode !== '') {
+            $stmt = $pdo->prepare("
+                SELECT proj_code, proj_mgr, COALESCE(proj_approval_status, 1) AS proj_approval_status
+                FROM tbl_project
+                WHERE proj_code = ?
+                LIMIT 1
+            ");
+            $stmt->execute([$postedProjectCode]);
+            $project = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$project) {
+                throw new Exception('Project not found.');
+            }
+
+            if ($creatorType === 'Manager') {
+                if (($project['proj_mgr'] ?? '') !== ($_SESSION['user_code'] ?? '')) {
+                    http_response_code(403);
+                    echo json_encode([
+                        'status' => 'error',
+                        'message' => 'You can only edit your own projects.'
+                    ]);
+                    exit;
+                }
+
+                if ((int)($project['proj_approval_status'] ?? 1) === 1) {
+                    echo json_encode([
+                        'status' => 'error',
+                        'message' => 'Approved projects can no longer be edited by the Project Manager.'
+                    ]);
+                    exit;
+                }
+            }
+
+            $stmt = $pdo->prepare("
+                UPDATE tbl_project
+                SET proj_mgr = ?,
+                    proj_name = ?,
+                    proj_owner = ?,
+                    proj_cost = ?,
+                    proj_desc = ?,
+                    proj_sd = ?,
+                    proj_ed = ?,
+                    proj_status = ?
+                WHERE proj_code = ?
+            ");
+            $stmt->execute([
+                $projectManagerCode,
+                $_POST['proj_name'],
+                $_POST['proj_owner'],
+                $_POST['proj_cost'],
+                $_POST['proj_desc'],
+                $_POST['proj_sd'],
+                $_POST['proj_ed'],
+                $_POST['proj_status'],
+                $postedProjectCode
+            ]);
+
+            echo json_encode([
+                'status' => 'success',
+                'message' => 'Project updated successfully.',
+                'proj_code' => $postedProjectCode
+            ]);
+            exit;
         }
 
         // =========================

@@ -75,6 +75,7 @@
     </div>
 
     <div class="card-footer">
-        <button type="submit" name="save_project" class="btn btn-primary">Submit</button>
+        <button type="submit" name="save_project" id="projectSubmitBtn" class="btn btn-primary">Submit</button>
+        <button type="button" id="cancelProjectEditBtn" class="btn btn-secondary d-none">Cancel Edit</button>
     </div>
 </form>

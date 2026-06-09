@@ -902,7 +902,7 @@ if (!isset($_SESSION['user_type']) ||
             <!-- general form elements -->
             <div class="card card-info">
               <div class="card-header">
-                <h3 class="card-title">Add New Project</h3>
+                <h3 class="card-title" id="projectFormTitle">Add New Project</h3>
               </div>
               <!-- /.card-header -->
               <!-- form start -->
@@ -3649,11 +3649,16 @@ $(document).ready(function() {
             orderable: false,
             render: function (data) {
                 const isAdmin = "<?= $_SESSION['user_type'] ?? '' ?>" === 'Admin';
+                const isManager = "<?= $_SESSION['user_type'] ?? '' ?>" === 'Manager';
+                const currentUserCode = "<?= $_SESSION['user_code'] ?? '' ?>";
                 const pendingApproval = parseInt(data.proj_approval_status, 10) !== 1;
 
                 let actions = '';
                 if (isAdmin && pendingApproval) {
                     actions += `<button class="btn btn-sm btn-warning approve-project-btn mr-1" data-id="${data.proj_code}">Approve</button>`;
+                }
+                if (isManager && pendingApproval && data.proj_mgr === currentUserCode) {
+                    actions += `<button class="btn btn-sm btn-secondary edit-project-btn mr-1" data-id="${data.proj_code}">Edit</button>`;
                 }
 
                 actions += `
@@ -4731,6 +4736,49 @@ $("#approveOrBtn").show().data("id", data.or_id);
 //end view order request
 
 //save project form
+function resetProjectForm() {
+    const form = $('#project-form')[0];
+    if (form) {
+        form.reset();
+    }
+    $('#project-form [name="proj_code"]').val('');
+    $('#projectFormTitle').text('Add New Project');
+    $('#projectSubmitBtn').text('Submit');
+    $('#cancelProjectEditBtn').addClass('d-none');
+}
+
+$(document).on('click', '.edit-project-btn', function() {
+    const row = $(this).closest('tr');
+    const tableRow = row.hasClass('child') ? row.prev() : row;
+    const data = projecttable.row(tableRow).data();
+
+    if (!data) {
+        toastr.error('Unable to load project details.');
+        return;
+    }
+
+    $('#project-form [name="proj_code"]').val(data.proj_code || '');
+    $('#project-form [name="proj_mgr"]').val(data.proj_mgr || '');
+    $('#project-form [name="proj_name"]').val(data.proj_name || '');
+    $('#project-form [name="proj_owner"]').val(data.proj_owner || '');
+    $('#project-form [name="proj_cost"]').val(data.proj_cost || '');
+    $('#project-form [name="proj_desc"]').val(data.proj_desc || '');
+    $('#project-form [name="proj_sd"]').val(data.proj_sd || '');
+    $('#project-form [name="proj_ed"]').val(data.proj_ed || '');
+    $('#project-form [name="proj_status"]').val(data.proj_status || '0');
+    $('#projectFormTitle').text('Edit Project');
+    $('#projectSubmitBtn').text('Update Project');
+    $('#cancelProjectEditBtn').removeClass('d-none');
+
+    $('html, body').animate({
+        scrollTop: $('#project-form').closest('.card').offset().top - 20
+    }, 250);
+});
+
+$('#cancelProjectEditBtn').on('click', function() {
+    resetProjectForm();
+});
+
 $('#project-form').on('submit', function(e){
     e.preventDefault();
 
@@ -4751,7 +4799,7 @@ $('#project-form').on('submit', function(e){
         success: function(res){
             if(res.status === 'success'){
                 toastr.success(res.message);
-                form.reset();
+                resetProjectForm();
                 projecttable.ajax.reload(null, false);
             } else {
                 toastr.error(res.message);
