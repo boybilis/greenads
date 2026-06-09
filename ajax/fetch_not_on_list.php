@@ -43,19 +43,28 @@ if ($rows && is_array($rows)) {
 			$status='<span class="badge bg-info">Ordered</span>';
 		}
 
-       $desc = !empty($row['description']) ? htmlspecialchars($row['description']) : '-';
-$description = "Color: " . htmlspecialchars($row['item_color']) .
-    "<br>Qty: " . number_format((float)($row['request_qty'] ?? 1), 2) . " " . htmlspecialchars($row['unit'] ?? '') .
+       $desc = !empty($row['description']) ? htmlspecialchars($row['description'], ENT_QUOTES, 'UTF-8') : '-';
+$description = "Color: " . htmlspecialchars($row['item_color'] ?? '', ENT_QUOTES, 'UTF-8') .
+    "<br>Qty: " . number_format((float)($row['request_qty'] ?? 1), 2) . " " . htmlspecialchars($row['unit'] ?? '', ENT_QUOTES, 'UTF-8') .
     "<br>" . $desc;
+        $editButton = '<a href="#" class="edit-item-request"'
+            . ' data-id="' . (int)$row['id'] . '"'
+            . ' data-name="' . htmlspecialchars($row['item_name'] ?? '', ENT_QUOTES, 'UTF-8') . '"'
+            . ' data-color="' . htmlspecialchars($row['item_color'] ?? '', ENT_QUOTES, 'UTF-8') . '"'
+            . ' data-qty="' . htmlspecialchars((string)($row['request_qty'] ?? 1), ENT_QUOTES, 'UTF-8') . '"'
+            . ' data-unit="' . htmlspecialchars($row['unit'] ?? '', ENT_QUOTES, 'UTF-8') . '"'
+            . ' data-description="' . htmlspecialchars($row['description'] ?? '', ENT_QUOTES, 'UTF-8') . '">'
+            . '<span class="badge badge-warning">Edit</span></a>';
+        $deleteButton = '<a href="#" class="delete-item-request" data-id="' . (int)$row['id'] . '"><span class="badge badge-danger">Delete</span></a>';
 		
 		
 
         $data[] = [
-            $row['item_name'],
+            htmlspecialchars($row['item_name'] ?? '', ENT_QUOTES, 'UTF-8'),
             $description,
             $status,
             $rawStatus === 'Pending'
-                ? '<a href="#" class="delete-item-request" data-id="' . (int)$row['id'] . '"><span class="badge badge-danger">Delete</span></a>'
+                ? $editButton . ' ' . $deleteButton
                 : '<span class="text-muted">-</span>'
         ];
     }

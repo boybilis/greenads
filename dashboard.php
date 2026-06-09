@@ -1505,7 +1505,7 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 			<div class="col-md-12">
             <div class="card">
               <div class="card-header border-warning bg-light">
-                <h3 class="card-title">Generated PR Requests (My Requests)</h3>
+                <h3 class="card-title">Generated PR Requests (<?php echo (($_SESSION['user_type'] ?? '') === 'Admin') ? 'All Requests' : 'My Requests'; ?>)</h3>
               </div>
               <div class="card-body p-3">
                 <div class="table-responsive">
@@ -2513,11 +2513,12 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <div class="modal-content">
 
       <div class="modal-header">
-        <h5 class="modal-title">Request New Item</h5>
+        <h5 class="modal-title" id="itemRequestModalTitle">Request New Item</h5>
         <button type="button" class="btn-close" data-dismiss="modal"></button>
       </div>
 
       <form id="itemRequestForm">
+        <input type="hidden" name="request_id" id="item_request_id" value="">
         <div class="modal-body">
 
           <div class="mb-3">
@@ -2560,7 +2561,7 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
 
         <div class="modal-footer">
-          <button type="submit" class="btn btn-primary">Submit Request</button>
+          <button type="submit" class="btn btn-primary" id="saveItemRequestBtn">Submit Request</button>
         </div>
       </form>
 
@@ -5397,8 +5398,16 @@ $(document).on('click', '.qr-btn', function () {
 
 
 // submit item request
+function resetItemRequestModal() {
+    $('#itemRequestForm')[0].reset();
+    $('#item_request_id').val('');
+    $('#itemRequestModalTitle').text('Request New Item');
+    $('#saveItemRequestBtn').text('Submit Request');
+}
+
 $('#itemRequestForm').on('submit', function(e){
     e.preventDefault();
+    const isEdit = $('#item_request_id').val() !== '';
 
     $.ajax({
         url: 'ajax/save_item_request.php',
@@ -5407,10 +5416,10 @@ $('#itemRequestForm').on('submit', function(e){
         success: function(res){
 
             if(res === "success"){
-                toastr.success("Item request submitted!");
+                toastr.success(isEdit ? "Item request updated!" : "Item request submitted!");
 					itemspo.ajax.reload(null, false);
                 $('#itemRequestModal').modal('hide');
-                $('#itemRequestForm')[0].reset();
+                resetItemRequestModal();
 
             } else {
                 toastr.error(res);
@@ -5423,6 +5432,25 @@ $('#itemRequestForm').on('submit', function(e){
     });
 });
 //end submit item
+
+$(document).on('click', '.edit-item-request', function(e) {
+    e.preventDefault();
+
+    resetItemRequestModal();
+    $('#item_request_id').val($(this).data('id') || '');
+    $('#itemRequestModalTitle').text('Edit Item Request');
+    $('#saveItemRequestBtn').text('Update Request');
+    $('#itemRequestForm [name="item_name"]').val($(this).data('name') || '');
+    $('#itemRequestForm [name="item_color"]').val($(this).data('color') || '');
+    $('#itemRequestForm [name="request_qty"]').val($(this).data('qty') || 1);
+    $('#itemRequestForm [name="unit"]').val($(this).data('unit') || '');
+    $('#itemRequestForm [name="description"]').val($(this).data('description') || '');
+    $('#itemRequestModal').modal('show');
+});
+
+$('#itemRequestModal').on('hidden.bs.modal', function() {
+    resetItemRequestModal();
+});
 
 $(document).on('click', '.delete-item-request', function(e) {
     e.preventDefault();

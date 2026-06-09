@@ -18,12 +18,13 @@ try {
 
     $where = '';
     $params = [];
+    $userType = $_SESSION['user_type'] ?? '';
     $onlyMine = (($_GET['mine'] ?? '') === '1');
 
-    if ($onlyMine) {
+    if ($onlyMine && $userType !== 'Admin') {
         $where = 'WHERE pr.requested_by_code = ?';
         $params[] = $_SESSION['user_code'];
-    } elseif (!in_array($_SESSION['user_type'] ?? '', ['Admin', 'Inventory'], true)) {
+    } elseif (!in_array($userType, ['Admin', 'Inventory'], true)) {
         $where = 'WHERE pr.requested_by_code = ?';
         $params[] = $_SESSION['user_code'];
     }
@@ -63,7 +64,6 @@ try {
             $badgeClass = 'badge-warning';
         }
 
-        $userType = $_SESSION['user_type'] ?? '';
         $action = '<a href="#" class="view-pr-request" data-id="' . (int)$row['pr_id'] . '"><span class="badge badge-info">View</span></a>';
         if (in_array($userType, ['Admin', 'Inventory'], true) && $status === 'PO Requested') {
             $action .= ' <a href="#" class="receive-pr-items" data-id="' . (int)$row['pr_id'] . '" data-ref="' . htmlspecialchars($row['pr_ref_no'] ?: ('PR-' . str_pad((string)$row['pr_id'], 6, '0', STR_PAD_LEFT))) . '"><span class="badge badge-warning">Receive Item</span></a>';
