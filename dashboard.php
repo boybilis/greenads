@@ -1158,6 +1158,7 @@ if (!isset($_SESSION['user_type']) ||
                       <th>Product Name</th>
                       <th>Description</th>
                       <th>Status</th>
+                      <th>Action</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -5422,6 +5423,41 @@ $('#itemRequestForm').on('submit', function(e){
     });
 });
 //end submit item
+
+$(document).on('click', '.delete-item-request', function(e) {
+    e.preventDefault();
+
+    const requestId = $(this).data('id');
+    if (!requestId) {
+        toastr.error('Invalid item request reference.');
+        return;
+    }
+
+    if (!confirm('Delete this pending item request?')) {
+        return;
+    }
+
+    $.ajax({
+        url: 'ajax/delete_item_request.php',
+        type: 'POST',
+        dataType: 'json',
+        data: { id: requestId },
+        success: function(res) {
+            if (res.status === 'success') {
+                toastr.success(res.message || 'Item request deleted.');
+                if (itemspo) {
+                    itemspo.ajax.reload(null, false);
+                }
+            } else {
+                toastr.error(res.message || 'Delete failed.');
+            }
+        },
+        error: function(xhr) {
+            console.error(xhr.responseText);
+            toastr.error(xhr.responseJSON?.message || 'Delete failed.');
+        }
+    });
+});
 
 $(document).on('click', '#createPendingItemPrBtn', function(e) {
     e.preventDefault();

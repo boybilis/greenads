@@ -34,7 +34,8 @@ if ($rows && is_array($rows)) {
     foreach ($rows as $row) {
 
 
-		$status=$row['status'];
+		$rawStatus=$row['status'];
+		$status=$rawStatus;
 		
 		if($status=='Pending'){
 			$status='<span class="badge bg-warning text-dark">Pending</span>';
@@ -52,7 +53,10 @@ $description = "Color: " . htmlspecialchars($row['item_color']) .
         $data[] = [
             $row['item_name'],
             $description,
-            $status
+            $status,
+            $rawStatus === 'Pending'
+                ? '<a href="#" class="delete-item-request" data-id="' . (int)$row['id'] . '"><span class="badge badge-danger">Delete</span></a>'
+                : '<span class="text-muted">-</span>'
         ];
     }
 }

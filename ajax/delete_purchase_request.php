@@ -53,6 +53,32 @@ try {
 
     $pdo->beginTransaction();
 
+    $linkedItemRequestIds = [];
+    $linkedItemsStmt = $pdo->prepare("
+        SELECT sku
+        FROM tbl_purchase_request_items
+        WHERE pr_id = ?
+          AND sku LIKE 'REQ-%'
+    ");
+    $linkedItemsStmt->execute([$prId]);
+    while ($linkedItem = $linkedItemsStmt->fetch(PDO::FETCH_ASSOC)) {
+        $requestId = (int)substr((string)$linkedItem['sku'], 4);
+        if ($requestId > 0) {
+            $linkedItemRequestIds[] = $requestId;
+        }
+    }
+
+    if ($linkedItemRequestIds) {
+        $placeholders = implode(',', array_fill(0, count($linkedItemRequestIds), '?'));
+        $resetItemRequests = $pdo->prepare("
+            UPDATE item_requests
+            SET status = 'Pending'
+            WHERE id IN ($placeholders)
+              AND status = 'Ordered'
+        ");
+        $resetItemRequests->execute($linkedItemRequestIds);
+    }
+
     $delItems = $pdo->prepare("DELETE FROM tbl_purchase_request_items WHERE pr_id = ?");
     $delItems->execute([$prId]);
 
