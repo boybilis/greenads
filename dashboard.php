@@ -3023,7 +3023,7 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <script src="dist/js/pages/dashboard2.js"></script>
 
 <script>
-let ortable, itemspo, stocktable, inventorytable, invLowStockTable, invInHistoryTable, invOutHistoryTable, projectMrReportTable, supplierTable, purchaseRequestTable, inventoryPurchaseRequestTable, purchaseOrderTable, userTable, auditLogTable;
+let ortable, itemspo, stocktable, inventorytable, invLowStockTable, invInHistoryTable, invOutHistoryTable, projecttable, projectMrReportTable, supplierTable, purchaseRequestTable, inventoryPurchaseRequestTable, purchaseOrderTable, userTable, auditLogTable;
 let myGeneratedPrTable;
 let encodePrItemsCache = {};
 let pendingEncodeAfterProductSave = null;
@@ -3535,7 +3535,7 @@ $(document).ready(function() {
 		}
 	});
 	//project list
-	let projecttable = $('#project-list').DataTable({
+	projecttable = $('#project-list').DataTable({
 
     ajax: {
         url: 'ajax/fetch_projects.php',
@@ -4748,9 +4748,21 @@ function resetProjectForm() {
 }
 
 $(document).on('click', '.edit-project-btn', function() {
+    const projCode = $(this).data('id');
     const row = $(this).closest('tr');
     const tableRow = row.hasClass('child') ? row.prev() : row;
-    const data = projecttable.row(tableRow).data();
+    let table = projecttable || $('#project-list').DataTable();
+    let data = table.row(tableRow).data();
+
+    if (!data && projCode) {
+        table.rows().every(function() {
+            const rowData = this.data();
+            if (rowData && rowData.proj_code === projCode) {
+                data = rowData;
+                return false;
+            }
+        });
+    }
 
     if (!data) {
         toastr.error('Unable to load project details.');
