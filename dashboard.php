@@ -2529,6 +2529,28 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <input type="text" name="item_color" class="form-control">
           </div>
 
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">Needed Quantity</label>
+                <input type="number" name="request_qty" class="form-control" min="0.01" step="0.01" value="1" required>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">Unit</label>
+                <select name="unit" class="form-control" required>
+                  <option value="">-Select-</option>
+                  <option value="yard">Yards</option>
+                  <option value="kg">Kilos / kg</option>
+                  <option value="roll">Rolls</option>
+                  <option value="bdl">Bundle</option>
+                  <option value="pcs">Pieces / pcs</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
           <div class="mb-3">
             <label class="form-label">Description</label>
             <textarea name="description" class="form-control" rows="3"></textarea>

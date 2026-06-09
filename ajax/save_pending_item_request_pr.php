@@ -28,8 +28,16 @@ $requestedByCode = $_SESSION['user_code'];
 try {
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
+    $itemRequestColumns = $pdo->query("SHOW COLUMNS FROM item_requests")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('request_qty', $itemRequestColumns, true)) {
+        $pdo->exec("ALTER TABLE item_requests ADD request_qty DECIMAL(12,2) NOT NULL DEFAULT 1 AFTER item_color");
+    }
+    if (!in_array('unit', $itemRequestColumns, true)) {
+        $pdo->exec("ALTER TABLE item_requests ADD unit VARCHAR(50) DEFAULT NULL AFTER request_qty");
+    }
+
     $pendingStmt = $pdo->query("
-        SELECT id, item_name, item_color, description
+        SELECT id, item_name, item_color, request_qty, unit, description
         FROM item_requests
         WHERE status = 'Pending'
         ORDER BY id ASC
@@ -107,7 +115,7 @@ try {
         INSERT INTO tbl_purchase_request_items
             (pr_id, sku, item_name, description, request_qty, unit, on_hand_qty, reserved_qty, available_qty, reorder_level)
         VALUES
-            (?, ?, ?, ?, 1, '', 0, 0, 0, 0)
+            (?, ?, ?, ?, ?, ?, 0, 0, 0, 0)
     ");
 
     $updateItemRequest = $pdo->prepare("
@@ -127,7 +135,9 @@ try {
             $prId,
             $sku,
             $item['item_name'],
-            $description
+            $description,
+            (float)($item['request_qty'] ?? 1),
+            $item['unit'] ?? ''
         ]);
 
         $updateItemRequest->execute([(int)$item['id']]);

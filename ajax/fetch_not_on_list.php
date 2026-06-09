@@ -7,6 +7,14 @@ $userType = $_SESSION['user_type'] ?? '';
 $userCode = $_SESSION['user_code'] ?? '';
 $username = $_SESSION['username'] ?? '';
 
+$columns = $pdo->query("SHOW COLUMNS FROM item_requests")->fetchAll(PDO::FETCH_COLUMN);
+if (!in_array('request_qty', $columns, true)) {
+    $pdo->exec("ALTER TABLE item_requests ADD request_qty DECIMAL(12,2) NOT NULL DEFAULT 1 AFTER item_color");
+}
+if (!in_array('unit', $columns, true)) {
+    $pdo->exec("ALTER TABLE item_requests ADD unit VARCHAR(50) DEFAULT NULL AFTER request_qty");
+}
+
 if ($userType === 'Manager') {
     $stmt = $pdo->prepare("
         SELECT *
@@ -35,7 +43,9 @@ if ($rows && is_array($rows)) {
 		}
 
        $desc = !empty($row['description']) ? htmlspecialchars($row['description']) : '-';
-$description = "Color: " . htmlspecialchars($row['item_color']) . "<br>" . $desc;
+$description = "Color: " . htmlspecialchars($row['item_color']) .
+    "<br>Qty: " . number_format((float)($row['request_qty'] ?? 1), 2) . " " . htmlspecialchars($row['unit'] ?? '') .
+    "<br>" . $desc;
 		
 		
 
