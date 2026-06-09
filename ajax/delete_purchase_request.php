@@ -59,17 +59,26 @@ try {
     $delPr = $pdo->prepare("DELETE FROM tbl_purchase_requests WHERE pr_id = ?");
     $delPr->execute([$prId]);
 
-    audit_log($pdo, 'DELETE', 'Purchase Request', $pr['pr_ref_no'] ?: (string)$prId, 'Deleted purchase request.');
-
     $pdo->commit();
 
+    audit_log($pdo, 'DELETE', 'Purchase Request', $pr['pr_ref_no'] ?: (string)$prId, 'Deleted purchase request.');
+
     echo json_encode(['status' => 'success', 'message' => 'Purchase request deleted.']);
-} catch (Exception $e) {
+} catch (Throwable $e) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
+
+    $verifyStmt = $pdo->prepare("SELECT COUNT(*) FROM tbl_purchase_requests WHERE pr_id = ?");
+    $verifyStmt->execute([$prId]);
+    if ((int)$verifyStmt->fetchColumn() === 0) {
+        error_log('delete_purchase_request completed but hit a post-delete error: ' . $e->getMessage());
+        echo json_encode(['status' => 'success', 'message' => 'Purchase request deleted.']);
+        exit;
+    }
+
     error_log('delete_purchase_request failed: ' . $e->getMessage());
     http_response_code(500);
-    echo json_encode(['status' => 'error', 'message' => 'Delete failed.']);
+    echo json_encode(['status' => 'error', 'message' => 'Delete failed: ' . $e->getMessage()]);
 }
 ?>

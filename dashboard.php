@@ -5779,7 +5779,19 @@ $(document).on('click', '.delete-pr-request', function(e) {
         },
         error: function(xhr) {
             console.error(xhr.responseText);
-            toastr.error('Delete failed.');
+            const message = xhr.responseJSON?.message || 'Delete failed.';
+            toastr.error(message);
+            if (message.toLowerCase().includes('deleted')) {
+                if (purchaseRequestTable) {
+                    purchaseRequestTable.ajax.reload(null, false);
+                }
+                if (inventoryPurchaseRequestTable) {
+                    inventoryPurchaseRequestTable.ajax.reload(null, false);
+                }
+                if (myGeneratedPrTable) {
+                    myGeneratedPrTable.ajax.reload(null, false);
+                }
+            }
         }
     });
 });
