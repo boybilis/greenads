@@ -3277,6 +3277,10 @@ $(document).ready(function() {
     });
 
 	let inventoryInItems = [];
+	let inventoryItemsLoadedAt = 0;
+	let inventoryItemsRequest = null;
+	const inventoryItemsCacheMs = 60000;
+	const maxItemDropdownResults = 50;
 
 	function escapeHtml(value) {
 		return String(value ?? '').replace(/[&<>"']/g, function (char) {
@@ -3290,22 +3294,42 @@ $(document).ready(function() {
 		});
 	}
 
-	function loadInventoryInItems() {
-		$.ajax({
+	function loadInventoryInItems(forceRefresh = false) {
+		const now = Date.now();
+		if (!forceRefresh && inventoryInItems.length > 0 && (now - inventoryItemsLoadedAt) < inventoryItemsCacheMs) {
+			return $.Deferred().resolve(inventoryInItems).promise();
+		}
+		if (inventoryItemsRequest) {
+			return inventoryItemsRequest;
+		}
+
+		inventoryItemsRequest = $.ajax({
 			url: 'ajax/fetch_inventory_items.php',
 			type: 'GET',
 			dataType: 'json',
 			success: function(res) {
 				inventoryInItems = res.data || [];
+				inventoryItemsLoadedAt = Date.now();
 			},
 			error: function(xhr) {
 				console.error(xhr.responseText);
 				toastr.error('Failed to load inventory items.');
+			},
+			complete: function() {
+				inventoryItemsRequest = null;
 			}
 		});
+
+		return inventoryItemsRequest;
 	}
 
 	loadInventoryInItems();
+
+	$(window).on('focus', function() {
+		if (Date.now() - inventoryItemsLoadedAt > (5 * 60000)) {
+			loadInventoryInItems(true);
+		}
+	});
 
 	$(document).on('click', '.inv-in', function(e) {
 		e.preventDefault();
@@ -3350,7 +3374,7 @@ $(document).ready(function() {
 
 		let html = '';
 		if (filtered.length > 0) {
-			filtered.forEach(function(item) {
+			filtered.slice(0, maxItemDropdownResults).forEach(function(item) {
 				html += `
 					<div class="item-option inv-item-option"
 						 data-sku="${escapeHtml(item.sku)}">
@@ -3359,6 +3383,9 @@ $(document).ready(function() {
 					</div>
 				`;
 			});
+			if (filtered.length > maxItemDropdownResults) {
+				html += `<div class="item-option text-muted">Showing first ${maxItemDropdownResults} matches. Keep typing to narrow results.</div>`;
+			}
 		} else {
 			html = '<div class="item-option">No matching item found</div>';
 		}
@@ -3405,7 +3432,7 @@ $(document).ready(function() {
 
 		let html = '';
 		if (filtered.length > 0) {
-			filtered.forEach(function(item) {
+			filtered.slice(0, maxItemDropdownResults).forEach(function(item) {
 				html += `
 					<div class="item-option inv-out-item-option"
 						 data-sku="${escapeHtml(item.sku)}">
@@ -3414,6 +3441,9 @@ $(document).ready(function() {
 					</div>
 				`;
 			});
+			if (filtered.length > maxItemDropdownResults) {
+				html += `<div class="item-option text-muted">Showing first ${maxItemDropdownResults} matches. Keep typing to narrow results.</div>`;
+			}
 		} else {
 			html = '<div class="item-option">No matching item found</div>';
 		}
@@ -3461,7 +3491,7 @@ $(document).ready(function() {
 					toastr.success(res.message);
 					$('#inventoryInModal').modal('hide');
 					$('#inventoryInForm')[0].reset();
-					loadInventoryInItems();
+					loadInventoryInItems(true);
 					stocktable.ajax.reload(null, false);
 					inventorytable.ajax.reload(null, false);
 					invLowStockTable.ajax.reload(null, false);
@@ -3511,7 +3541,7 @@ $(document).ready(function() {
 					toastr.success(res.message);
 					$('#inventoryOutModal').modal('hide');
 					$('#inventoryOutForm')[0].reset();
-					loadInventoryInItems();
+					loadInventoryInItems(true);
 					stocktable.ajax.reload(null, false);
 					inventorytable.ajax.reload(null, false);
 					invLowStockTable.ajax.reload(null, false);
@@ -4121,12 +4151,30 @@ $('#material_name, #color, #gsm').on('input blur', buildSkuPreview);
 $(document).ready(function () {
     let itemIndex = 1;
     let itemsList = [];
+    let itemsListLoadedAt = 0;
+    let itemsListRequest = null;
+    const itemsListCacheMs = 60000;
+    const maxMaterialDropdownResults = 50;
     let selectingItemOption = false;
 
     loadInventoryItems();
 
-    function loadInventoryItems() {
-        $.ajax({
+    $(window).on('focus', function() {
+        if (Date.now() - itemsListLoadedAt > (5 * 60000)) {
+            loadInventoryItems(true);
+        }
+    });
+
+    function loadInventoryItems(forceRefresh = false) {
+        const now = Date.now();
+        if (!forceRefresh && itemsList.length > 0 && (now - itemsListLoadedAt) < itemsListCacheMs) {
+            return $.Deferred().resolve(itemsList).promise();
+        }
+        if (itemsListRequest) {
+            return itemsListRequest;
+        }
+
+        itemsListRequest = $.ajax({
             url: "ajax/fetch_items_po.php",
             type: "GET",
             dataType: "json",
@@ -4140,14 +4188,18 @@ $(document).ready(function () {
                     unit: row[5],
                     unit_price: row[6]
                 }));
-
-                console.log("Inventory loaded:", itemsList);
+                itemsListLoadedAt = Date.now();
             },
             error: function (xhr) {
                 console.error("Failed to load inventory:", xhr.responseText);
                 alert("Failed to load inventory items.");
+            },
+            complete: function () {
+                itemsListRequest = null;
             }
         });
+
+        return itemsListRequest;
     }
 
     function getUnitFromStock(stockText) {
@@ -4270,7 +4322,7 @@ $(document).ready(function () {
         let html = "";
 
         if (filtered.length > 0) {
-            filtered.forEach(item => {
+            filtered.slice(0, maxMaterialDropdownResults).forEach(item => {
                 html += `
                     <div class="item-option"
                          data-sku="${item.sku}">
@@ -4279,6 +4331,9 @@ $(document).ready(function () {
                     </div>
                 `;
             });
+            if (filtered.length > maxMaterialDropdownResults) {
+                html += `<div class="item-option text-muted">Showing first ${maxMaterialDropdownResults} matches. Keep typing to narrow results.</div>`;
+            }
         } else {
             html = `<div class="item-option">No matching item found</div>`;
         }
