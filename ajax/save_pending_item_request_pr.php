@@ -24,6 +24,15 @@ if (($_SESSION['user_type'] ?? '') === 'Inventory') {
 
 $requestedBy = $_SESSION['username'] ?? $_SESSION['user_code'];
 $requestedByCode = $_SESSION['user_code'];
+$itemRequestId = (int)($_POST['item_request_id'] ?? 0);
+
+if ($itemRequestId <= 0) {
+    echo json_encode([
+        'status' => 'error',
+        'message' => 'Invalid item request.'
+    ]);
+    exit;
+}
 
 try {
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -36,18 +45,39 @@ try {
         $pdo->exec("ALTER TABLE item_requests ADD unit VARCHAR(50) DEFAULT NULL AFTER request_qty");
     }
 
-    $pendingStmt = $pdo->query("
-        SELECT id, item_name, item_color, request_qty, unit, description
+    $pendingStmt = $pdo->prepare("
+        SELECT id, item_name, item_color, request_qty, unit, description, requested_by, status
         FROM item_requests
-        WHERE status = 'Pending'
-        ORDER BY id ASC
+        WHERE id = ?
+        LIMIT 1
     ");
+    $pendingStmt->execute([$itemRequestId]);
     $pendingItems = $pendingStmt->fetchAll(PDO::FETCH_ASSOC);
 
     if (count($pendingItems) === 0) {
         echo json_encode([
             'status' => 'error',
-            'message' => 'No pending item requests found.'
+            'message' => 'Item request not found.'
+        ]);
+        exit;
+    }
+
+    $itemRequest = $pendingItems[0];
+    if (($itemRequest['status'] ?? '') !== 'Pending') {
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Only pending item requests can be converted to PR.'
+        ]);
+        exit;
+    }
+
+    $userType = $_SESSION['user_type'] ?? '';
+    $isOwner = in_array($itemRequest['requested_by'] ?? '', [$_SESSION['user_code'] ?? '', $_SESSION['username'] ?? ''], true);
+    if ($userType !== 'Admin' && !$isOwner) {
+        http_response_code(403);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'You can only create PR requests from your own item requests.'
         ]);
         exit;
     }

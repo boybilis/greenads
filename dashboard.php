@@ -1170,12 +1170,6 @@ if (!isset($_SESSION['user_type']) ||
                 <!-- /.table-responsive -->
               </div>
               <!-- /.card-body -->
-              <div class="card-footer clearfix">
-                <button type="button" class="btn btn-sm btn-success float-right" id="createPendingItemPrBtn">
-                  Create PR Request
-                </button>
-              </div>
-              <!-- /.card-footer -->
             </div>
             <!-- /.card -->
 			</div>
@@ -5606,21 +5600,29 @@ $(document).on('click', '.delete-item-request', function(e) {
     });
 });
 
-$(document).on('click', '#createPendingItemPrBtn', function(e) {
+$(document).on('click', '.create-item-request-pr', function(e) {
     e.preventDefault();
 
-    if (!confirm('Create a PR request from all pending item requests?')) {
+    const requestId = $(this).data('id');
+    if (!requestId) {
+        toastr.error('Invalid item request reference.');
         return;
     }
 
-    const btn = $('#createPendingItemPrBtn');
+    if (!confirm('Create a PR request from this item request?')) {
+        return;
+    }
+
+    const btn = $(this);
+    const originalHtml = btn.html();
 
     $.ajax({
         url: 'ajax/save_pending_item_request_pr.php',
         type: 'POST',
         dataType: 'json',
+        data: { item_request_id: requestId },
         beforeSend: function() {
-            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Creating...');
+            btn.addClass('disabled').html('<i class="fas fa-spinner fa-spin"></i> Creating...');
         },
         success: function(res) {
             if (res.status === 'success') {
@@ -5638,10 +5640,10 @@ $(document).on('click', '#createPendingItemPrBtn', function(e) {
         },
         error: function(xhr) {
             console.error(xhr.responseText);
-            toastr.error('Failed to create PR request.');
+            toastr.error(xhr.responseJSON?.message || 'Failed to create PR request.');
         },
         complete: function() {
-            btn.prop('disabled', false).html('Create PR Request');
+            btn.removeClass('disabled').html(originalHtml);
         }
     });
 });

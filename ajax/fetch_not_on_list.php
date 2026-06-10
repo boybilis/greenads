@@ -47,6 +47,11 @@ if ($rows && is_array($rows)) {
 $description = "Color: " . htmlspecialchars($row['item_color'] ?? '', ENT_QUOTES, 'UTF-8') .
     "<br>Qty: " . number_format((float)($row['request_qty'] ?? 1), 2) . " " . htmlspecialchars($row['unit'] ?? '', ENT_QUOTES, 'UTF-8') .
     "<br>" . $desc;
+        $canCreatePr = !in_array($userType, ['Inventory', 'Purchasing'], true)
+            && ($userType === 'Admin' || in_array($row['requested_by'] ?? '', [$userCode, $username], true));
+        $createPrButton = $canCreatePr
+            ? '<a href="#" class="create-item-request-pr" data-id="' . (int)$row['id'] . '"><span class="badge badge-success">Create PR</span></a>'
+            : '';
         $editButton = '<a href="#" class="edit-item-request"'
             . ' data-id="' . (int)$row['id'] . '"'
             . ' data-name="' . htmlspecialchars($row['item_name'] ?? '', ENT_QUOTES, 'UTF-8') . '"'
@@ -64,7 +69,7 @@ $description = "Color: " . htmlspecialchars($row['item_color'] ?? '', ENT_QUOTES
             $description,
             $status,
             $rawStatus === 'Pending'
-                ? $editButton . ' ' . $deleteButton
+                ? trim($createPrButton . ' ' . $editButton . ' ' . $deleteButton)
                 : '<span class="text-muted">-</span>'
         ];
     }
