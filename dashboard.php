@@ -1141,6 +1141,7 @@ if (!isset($_SESSION['user_type']) ||
 		</div>	
 		
 			<div class="row">
+        <?php if (($_SESSION['user_type'] ?? '') !== 'Purchasing') { ?>
 		<div class="col-6">
 		<!-- TABLE: LATEST ORDERS -->
             <div class="card">
@@ -1179,7 +1180,8 @@ if (!isset($_SESSION['user_type']) ||
             <!-- /.card -->
 			</div>
 			<!-- .col-12 -->
-		<div class="col-6">
+        <?php } ?>
+		<div class="<?php echo (($_SESSION['user_type'] ?? '') === 'Purchasing') ? 'col-12' : 'col-6'; ?>">
             <div class="card">
               <div class="card-header bg-warning border-warning">
                 <h3 class="card-title">Fabric Unit Converter</h3>
@@ -3107,11 +3109,13 @@ $(document).ready(function() {
         autoWidth: false
     });
 	
+	if ($('#items-po').length) {
 	itemspo = $('#items-po').DataTable({
         ajax: 'ajax/fetch_not_on_list.php',
         responsive: true,
         autoWidth: false
     });
+    }
 	
 	
 	
