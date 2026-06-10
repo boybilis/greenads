@@ -2441,7 +2441,7 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
 
         <div class="modal-body">
-          <input type="hidden" name="proj_code" id="proj_code">
+          <input type="hidden" name="proj_code" id="upload_proj_code">
 
           <input type="file"
                  name="file"
@@ -5435,7 +5435,7 @@ $(document).on('click', '.view-pr-request', function (e) {
 $(document).on('click', '.upload-btn', function () {
     let proj_code = $(this).data('id');
 
-    $('#proj_code').val(proj_code);
+    $('#upload_proj_code').val(proj_code);
     $('#uploadModal').modal('show');
 });
 
