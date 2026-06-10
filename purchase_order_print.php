@@ -110,7 +110,8 @@ foreach ($items as $item) {
         .toolbar button { padding: 7px 14px; cursor: pointer; }
         .sheet { width: 210mm; min-height: 297mm; padding: 14mm; margin: 0 auto; background: #fff; }
         .header { display: flex; justify-content: space-between; gap: 18px; border-bottom: 2px solid #111; padding-bottom: 12px; margin-bottom: 16px; }
-        .logo-box { width: 95px; height: 70px; border: 1px solid #555; display: flex; align-items: center; justify-content: center; color: #777; font-size: 11px; text-align: center; }
+        .logo-box { width: 115px; height: 75px; display: flex; align-items: center; justify-content: center; }
+        .logo-box img { max-width: 115px; max-height: 75px; object-fit: contain; }
         .company { flex: 1; }
         h1 { margin: 0 0 6px; font-size: 22px; letter-spacing: 0; }
         .meta { text-align: right; line-height: 1.6; min-width: 165px; }
@@ -136,7 +137,9 @@ foreach ($items as $item) {
     </div>
     <div class="sheet">
         <div class="header">
-            <div class="logo-box">Company<br>Image</div>
+            <div class="logo-box">
+                <img src="dist/img/greenads_logo.png" alt="Green Ads and Promats Logo">
+            </div>
             <div class="company">
                 <h1>Green Ads and Promats, Inc.</h1>
                 <strong>PURCHASE ORDER</strong>
