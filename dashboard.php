@@ -3802,6 +3802,16 @@ $(document).ready(function() {
 
         // Show selected section
         $('#' + target).removeClass('d-none');
+
+        if (target === 'order') {
+            if (ortable) {
+                ortable.ajax.reload(null, false);
+            }
+            if (myGeneratedPrTable) {
+                myGeneratedPrTable.ajax.reload(null, false);
+            }
+            $(document).trigger('material-request-section-opened');
+        }
     });
 
 });
@@ -4157,6 +4167,10 @@ $(document).ready(function () {
         if (Date.now() - itemsListLoadedAt > (5 * 60000)) {
             loadInventoryItems(true);
         }
+    });
+
+    $(document).on('material-request-section-opened', function() {
+        loadInventoryItems(true);
     });
 
     function loadInventoryItems(forceRefresh = false) {
