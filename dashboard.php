@@ -1142,7 +1142,7 @@ if (!isset($_SESSION['user_type']) ||
 		
 			<div class="row">
         <?php if (($_SESSION['user_type'] ?? '') !== 'Purchasing') { ?>
-		<div class="col-6">
+		<div class="col-12">
 		<!-- TABLE: LATEST ORDERS -->
             <div class="card">
               <div class="card-header border-warning">
