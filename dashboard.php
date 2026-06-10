@@ -2115,14 +2115,18 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 		<div class="row">
 		  <div class="col-md-12">
 			<div class="card">
-			  <div class="card-header border-warning">
-				<h3 class="card-title">Purchase Request List</h3>
+			  <div class="card-header border-warning d-flex justify-content-between align-items-center">
+				<h3 class="card-title mb-0">Purchase Request List</h3>
+                <button type="button" class="btn btn-sm btn-secondary ml-auto" id="createSelectedPoBtn">
+                    Create PO from selected PRs
+                </button>
 			  </div>
 			  <div class="card-body p-3">
 				<div class="table-responsive">
 				  <table class="table table-bordered table-striped m-0" id="purchase-request-list">
 					<thead>
 					  <tr>
+                        <th style="width:32px;"><input type="checkbox" id="selectAllPrForPo"></th>
 						<th>PR No.</th>
 						<th>Date</th>
 						<th>Requested By</th>
@@ -3240,6 +3244,7 @@ $(document).ready(function() {
         autoWidth: false,
         order: [[0, 'desc']],
         columns: [
+            { data: 'select_po', orderable: false, searchable: false },
             { data: 'pr_ref_no' },
             { data: 'request_date' },
             { data: 'requested_by' },
@@ -4160,6 +4165,10 @@ $(document).ready(function () {
     const itemsListCacheMs = 60000;
     const maxMaterialDropdownResults = 50;
     let selectingItemOption = false;
+
+    function escapeHtml(value) {
+        return $('<div>').text(value ?? '').html();
+    }
 
     loadInventoryItems();
 
@@ -5662,13 +5671,11 @@ $(document).on('click', '.create-item-request-pr', function(e) {
     });
 });
 
-$(document).on('click', '.create-po-request', function (e) {
-    e.preventDefault();
+function openPoModalForPrIds(prIds) {
+    prIds = (prIds || []).map(Number).filter(Boolean);
 
-    const prId = $(this).data('id');
-
-    if (!prId) {
-        toastr.error('Invalid PR ID');
+    if (prIds.length === 0) {
+        toastr.error('Please select at least one valid PR.');
         return;
     }
 
@@ -5681,28 +5688,44 @@ $(document).on('click', '.create-po-request', function (e) {
     `);
     $('#supplierSelect').val('');
     $('#poModal').modal('show');
+    $('#poModal').data('pr-ids', prIds);
+    $('#poModal').removeData('pr-id');
+    $('#poPrRef').text('Loading...');
 
-    $.ajax({
-        url: 'ajax/fetch_purchase_request_details.php',
-        method: 'GET',
-        data: { pr_id: prId },
-        dataType: 'json'
-    })
-    .done(function (res) {
-        if (res.status !== 'success') {
-            toastr.error('Failed to load items');
-            return;
-        }
+    const requests = prIds.map(function(prId) {
+        return $.ajax({
+            url: 'ajax/fetch_purchase_request_details.php',
+            method: 'GET',
+            data: { pr_id: prId },
+            dataType: 'json'
+        });
+    });
 
-       let html = '';
+    $.when.apply($, requests)
+        .done(function() {
+            const responses = prIds.length === 1 ? [arguments[0]] : Array.from(arguments).map(function(arg) {
+                return arg[0];
+            });
+            let html = '';
+            const prRefs = [];
 
-(res.items || []).forEach(item => {
+            responses.forEach(function(res) {
+                if (!res || res.status !== 'success') {
+                    return;
+                }
+                const prRefNo = res.header?.pr_ref_no || '';
+                if (prRefNo) {
+                    prRefs.push(prRefNo);
+                }
+
+                (res.items || []).forEach(item => {
     const unitPrice = Number(item.unit_price || 0);
     const requestQty = Number(item.request_qty || 0);
     const totalPrice = requestQty * unitPrice;
     html += `
-        <tr data-sku="${item.sku}">
+        <tr data-pr-id="${res.header.pr_id}" data-pr-item-id="${item.pr_item_id}" data-sku="${item.sku}">
             <td>
+                <span class="badge badge-light">${escapeHtml(prRefNo)}</span><br>
                 <strong>${item.item_name}</strong><br>
 
                 <small class="text-muted">
@@ -5729,15 +5752,40 @@ $(document).on('click', '.create-po-request', function (e) {
         </tr>
     `;
 });
+            });
 
-        $('#poItemsBody').html(html);
-        $('#poModal').data('pr-id', prId); // store PR ID
-		$('#poPrRef').text(res.header.pr_ref_no || '');
-        updatePoGrandTotal();
-    })
-    .fail(() => {
-        toastr.error('Error loading PR items');
-    });
+            if (html === '') {
+                $('#poItemsBody').html('<tr><td colspan="5" class="text-center text-danger">No valid PR items loaded.</td></tr>');
+                $('#poPrRef').text('');
+                return;
+            }
+
+            $('#poItemsBody').html(html);
+            $('#poPrRef').text(prRefs.join(', '));
+            updatePoGrandTotal();
+        })
+        .fail(function() {
+            toastr.error('Error loading PR items');
+            $('#poItemsBody').html('<tr><td colspan="5" class="text-center text-danger">Unable to load PR items.</td></tr>');
+            $('#poPrRef').text('');
+        });
+}
+
+$(document).on('click', '.create-po-request', function (e) {
+    e.preventDefault();
+    openPoModalForPrIds([$(this).data('id')]);
+});
+
+$(document).on('click', '#createSelectedPoBtn', function(e) {
+    e.preventDefault();
+    const prIds = $('.select-pr-for-po:checked').map(function() {
+        return $(this).val();
+    }).get();
+    openPoModalForPrIds(prIds);
+});
+
+$(document).on('change', '#selectAllPrForPo', function() {
+    $('.select-pr-for-po:not(:disabled)').prop('checked', this.checked);
 });
 
 $(document).on('input', '#poItemsBody .po-qty, #poItemsBody .po-unit-price-input', function() {
@@ -5770,8 +5818,14 @@ function printPurchaseOrder(po, previewWin) {
     po = po || {};
     const supplier = po.supplier || {};
     let rows = '';
+    let lastPrRef = null;
 
     (po.items || []).forEach(function(item, index) {
+        const prRef = item.pr_ref_no || po.pr_ref_no || '-';
+        if (prRef !== lastPrRef) {
+            rows += '<tr><td colspan="8" style="background:#f7f7f7;font-weight:bold;">PR #: ' + escapeHtml(prRef) + '</td></tr>';
+            lastPrRef = prRef;
+        }
         rows += '<tr>' +
             '<td class="center">' + (index + 1) + '</td>' +
             '<td>' + escapeHtml(item.sku) + '</td>' +
@@ -5795,7 +5849,7 @@ function printPurchaseOrder(po, previewWin) {
         '<!doctype html><html><head><title>' + escapeHtml(po.po_ref_no || 'Purchase Order') + '</title>' +
         '<style>@page{size:A4;margin:14mm}*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;color:#111;font-size:12px}.sheet{width:210mm;min-height:297mm;padding:14mm;margin:0 auto;background:#fff}.header{display:flex;justify-content:space-between;gap:18px;border-bottom:2px solid #111;padding-bottom:12px;margin-bottom:16px}.logo-box{width:95px;height:70px;border:1px solid #555;display:flex;align-items:center;justify-content:center;color:#777;font-size:11px;text-align:center}.company{flex:1}h1{margin:0 0 6px;font-size:22px;letter-spacing:0}.meta{text-align:right;line-height:1.6;min-width:165px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:16px}.section-title{font-weight:bold;margin-bottom:6px;text-transform:uppercase}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border:1px solid #333;padding:7px;vertical-align:top}th{background:#f2f2f2;text-align:left}.center{text-align:center}.right{text-align:right}.signatures{display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-top:42px}.signature-line{border-top:1px solid #111;padding-top:6px;text-align:center}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.sheet{width:auto;min-height:auto;padding:0}}</style>' +
         '</head><body onload="window.print();"><div class="sheet">' +
-        '<div class="header"><div class="logo-box">Company<br>Image</div><div class="company"><h1>Green Ads and Promats, Inc.</h1><strong>PURCHASE ORDER</strong><br>PR #: ' + escapeHtml(po.pr_ref_no || '') + '</div><div class="meta"><div><strong>PO #:</strong> ' + escapeHtml(po.po_ref_no || '') + '</div><div><strong>Date:</strong> ' + escapeHtml(po.po_date || '') + '</div></div></div>' +
+        '<div class="header"><div class="logo-box">Company<br>Image</div><div class="company"><h1>Green Ads and Promats, Inc.</h1><strong>PURCHASE ORDER</strong></div><div class="meta"><div><strong>PO #:</strong> ' + escapeHtml(po.po_ref_no || '') + '</div><div><strong>Date:</strong> ' + escapeHtml(po.po_date || '') + '</div></div></div>' +
         '<div class="grid"><div><div class="section-title">Supplier Details</div><div><strong>' + escapeHtml(supplier.supplier_name || '') + '</strong></div><div>Owner: ' + escapeHtml(supplier.supplier_owner || '-') + '</div><div>Address: ' + escapeHtml(supplier.address || '-') + '</div><div>Contact: ' + escapeHtml(supplier.contact_no || '-') + '</div><div>Email: ' + escapeHtml(supplier.email || '-') + '</div></div><div><div class="section-title">Prepared By</div><div>' + escapeHtml(po.created_by || '') + '</div></div></div>' +
         '<table><thead><tr><th class="center" style="width:36px;">#</th><th style="width:95px;">SKU</th><th>Item</th><th style="width:85px;" class="right">Requested</th><th style="width:85px;" class="right">PO Qty</th><th style="width:95px;" class="right">Unit Price</th><th style="width:110px;" class="right">Total Price</th><th style="width:55px;">Unit</th></tr></thead><tbody>' + rows + '</tbody><tfoot><tr><th colspan="6" class="right">Grand Total</th><th class="right">' + formatPoQty(grandTotal) + '</th><th></th></tr></tfoot></table>' +
         '<div class="signatures"><div class="signature-line">Prepared By</div><div class="signature-line">Approved By</div></div></div></body></html>';
@@ -5812,11 +5866,11 @@ function printPurchaseOrder(po, previewWin) {
 }
 
 $(document).on('click', '#savePoBtn', function () {
-    const prId = $('#poModal').data('pr-id');
+    const prIds = ($('#poModal').data('pr-ids') || []).map(Number).filter(Boolean);
     const supplierId = $('#supplierSelect').val();
     const items = [];
 
-    if (!prId) {
+    if (prIds.length === 0) {
         toastr.error('Invalid PR reference.');
         return;
     }
@@ -5828,11 +5882,15 @@ $(document).on('click', '#savePoBtn', function () {
 
     $('#poItemsBody tr').each(function() {
         const sku = $(this).data('sku');
+        const prItemId = Number($(this).data('pr-item-id') || 0);
+        const prId = Number($(this).data('pr-id') || 0);
         const poQty = Number($(this).find('.po-qty').val() || 0);
         const unitPrice = Number($(this).find('.po-unit-price-input').val() || 0);
 
-        if (sku && poQty > 0) {
+        if (sku && prItemId && prId && poQty > 0) {
             items.push({
+                pr_id: prId,
+                pr_item_id: prItemId,
                 sku: sku,
                 po_qty: poQty,
                 unit_price: unitPrice
@@ -5852,7 +5910,7 @@ $(document).on('click', '#savePoBtn', function () {
         type: 'POST',
         dataType: 'json',
         data: {
-            pr_id: prId,
+            pr_ids: JSON.stringify(prIds),
             supplier_id: supplierId,
             items: JSON.stringify(items)
         },

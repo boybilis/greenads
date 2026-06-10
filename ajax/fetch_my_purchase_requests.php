@@ -15,6 +15,18 @@ try {
     if (!in_array('proj_code', $prColumns, true)) {
         $pdo->exec("ALTER TABLE tbl_purchase_requests ADD proj_code VARCHAR(100) DEFAULT NULL AFTER request_date");
     }
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS tbl_purchase_order_prs (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            po_id INT NOT NULL,
+            pr_id INT NOT NULL,
+            pr_ref_no VARCHAR(30) DEFAULT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_po_pr (po_id, pr_id),
+            INDEX idx_po_prs_po_id (po_id),
+            INDEX idx_po_prs_pr_id (pr_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
 
     $where = '';
     $params = [];
@@ -37,12 +49,13 @@ try {
             pr.proj_code,
             pr.requested_by,
             pr.status,
-            MAX(po.po_id) AS po_id,
+            MAX(COALESCE(popr.po_id, po.po_id)) AS po_id,
             COUNT(pri.pr_item_id) AS item_count,
             COALESCE(SUM(pri.request_qty), 0) AS total_qty
         FROM tbl_purchase_requests pr
         LEFT JOIN tbl_purchase_request_items pri ON pri.pr_id = pr.pr_id
         LEFT JOIN tbl_purchase_orders po ON po.pr_id = pr.pr_id
+        LEFT JOIN tbl_purchase_order_prs popr ON popr.pr_id = pr.pr_id
         {$where}
         GROUP BY pr.pr_id, pr.pr_ref_no, pr.request_date, pr.proj_code, pr.requested_by, pr.status
         ORDER BY pr.pr_id DESC

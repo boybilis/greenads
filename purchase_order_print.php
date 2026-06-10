@@ -20,6 +20,22 @@ if (!in_array('fulfillment_status', $poColumns, true)) {
 if (!in_array('approval_status', $poColumns, true)) {
     $pdo->exec("ALTER TABLE tbl_purchase_orders ADD approval_status VARCHAR(30) NOT NULL DEFAULT 'Pending' AFTER fulfillment_status");
 }
+$pdo->exec("
+    CREATE TABLE IF NOT EXISTS tbl_purchase_order_prs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        po_id INT NOT NULL,
+        pr_id INT NOT NULL,
+        pr_ref_no VARCHAR(30) DEFAULT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_po_pr (po_id, pr_id),
+        INDEX idx_po_prs_po_id (po_id),
+        INDEX idx_po_prs_pr_id (pr_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+");
+$poItemColumns = $pdo->query("SHOW COLUMNS FROM tbl_purchase_order_items")->fetchAll(PDO::FETCH_COLUMN);
+if (!in_array('pr_ref_no', $poItemColumns, true)) {
+    $pdo->exec("ALTER TABLE tbl_purchase_order_items ADD pr_ref_no VARCHAR(30) DEFAULT NULL AFTER pr_item_id");
+}
 
 $headerStmt = $pdo->prepare("
     SELECT
@@ -31,7 +47,7 @@ $headerStmt = $pdo->prepare("
         po.fulfillment_status,
         COALESCE(po.approval_status, 'Pending') AS approval_status,
         po.created_by,
-        pr.pr_ref_no,
+        COALESCE(GROUP_CONCAT(DISTINCT popr.pr_ref_no ORDER BY popr.pr_id SEPARATOR ', '), pr.pr_ref_no) AS pr_ref_no,
         s.supplier_name,
         s.supplier_owner,
         s.address,
@@ -39,8 +55,10 @@ $headerStmt = $pdo->prepare("
         s.email
     FROM tbl_purchase_orders po
     LEFT JOIN tbl_purchase_requests pr ON pr.pr_id = po.pr_id
+    LEFT JOIN tbl_purchase_order_prs popr ON popr.po_id = po.po_id
     LEFT JOIN tbl_suppliers s ON s.supplier_id = po.supplier_id
     WHERE po.po_id = ?
+    GROUP BY po.po_id, po.po_ref_no, po.po_date, po.receipt_no, po.date_received, po.fulfillment_status, po.approval_status, po.created_by, pr.pr_ref_no, s.supplier_name, s.supplier_owner, s.address, s.contact_no, s.email
 ");
 $headerStmt->execute([$poId]);
 $po = $headerStmt->fetch(PDO::FETCH_ASSOC);
@@ -55,6 +73,7 @@ if (($po['approval_status'] ?? 'Pending') !== 'Approved' && (($_SESSION['user_ty
 $itemStmt = $pdo->prepare("
     SELECT
         poi.sku,
+        COALESCE(poi.pr_ref_no, pr.pr_ref_no) AS pr_ref_no,
         poi.item_name,
         COALESCE(poi.material_type, ti.material_type) AS material_type,
         poi.description,
@@ -65,9 +84,11 @@ $itemStmt = $pdo->prepare("
         COALESCE(poi.line_total, (poi.po_qty * COALESCE(poi.unit_price, 0))) AS line_total,
         poi.unit
     FROM tbl_purchase_order_items poi
+    LEFT JOIN tbl_purchase_request_items pri ON pri.pr_item_id = poi.pr_item_id
+    LEFT JOIN tbl_purchase_requests pr ON pr.pr_id = pri.pr_id
     LEFT JOIN tbl_items ti ON ti.sku = poi.sku
     WHERE poi.po_id = ?
-    ORDER BY poi.item_name ASC, poi.sku ASC
+    ORDER BY COALESCE(poi.pr_ref_no, pr.pr_ref_no) ASC, poi.item_name ASC, poi.sku ASC
 ");
 $itemStmt->execute([$poId]);
 $items = $itemStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -118,8 +139,7 @@ foreach ($items as $item) {
             <div class="logo-box">Company<br>Image</div>
             <div class="company">
                 <h1>Green Ads and Promats, Inc.</h1>
-                <strong>PURCHASE ORDER</strong><br>
-                PR #: <?= htmlspecialchars($po['pr_ref_no'] ?: '-'); ?>
+                <strong>PURCHASE ORDER</strong>
             </div>
             <div class="meta">
                 <div><strong>PO #:</strong> <?= htmlspecialchars($po['po_ref_no']); ?></div>
@@ -158,7 +178,19 @@ foreach ($items as $item) {
                 </tr>
             </thead>
             <tbody>
-                <?php foreach ($items as $index => $item) { ?>
+                <?php
+                $lastPrRef = null;
+                foreach ($items as $index => $item) {
+                    $itemPrRef = $item['pr_ref_no'] ?: '-';
+                    if ($itemPrRef !== $lastPrRef) {
+                        $lastPrRef = $itemPrRef;
+                ?>
+                    <tr>
+                        <td colspan="7" style="background:#f7f7f7;font-weight:bold;">
+                            PR #: <?= htmlspecialchars($itemPrRef); ?>
+                        </td>
+                    </tr>
+                <?php } ?>
                     <tr>
                         <td class="center"><?= $index + 1; ?></td>
                         <td><?= htmlspecialchars($item['sku']); ?></td>

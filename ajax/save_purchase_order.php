@@ -14,13 +14,20 @@ if (!isset($_SESSION['user_code'])) {
     exit;
 }
 
-$prId = (int)($_POST['pr_id'] ?? 0);
+$prIdsPayload = trim($_POST['pr_ids'] ?? '');
+$prIds = json_decode($prIdsPayload, true);
+if (!is_array($prIds)) {
+    $legacyPrId = (int)($_POST['pr_id'] ?? 0);
+    $prIds = $legacyPrId > 0 ? [$legacyPrId] : [];
+}
+$prIds = array_values(array_unique(array_filter(array_map('intval', $prIds))));
+$primaryPrId = (int)($prIds[0] ?? 0);
 $supplierId = (int)($_POST['supplier_id'] ?? 0);
 $itemsPayload = trim($_POST['items'] ?? '');
 $items = json_decode($itemsPayload, true);
 $createdBy = $_SESSION['username'] ?? $_SESSION['user_code'];
 
-if ($prId <= 0 || $supplierId <= 0) {
+if ($primaryPrId <= 0 || $supplierId <= 0) {
     echo json_encode([
         'status' => 'error',
         'message' => 'Please select a valid PR and supplier.'
@@ -38,14 +45,18 @@ if (!is_array($items) || count($items) === 0) {
 
 $requestedItems = [];
 $requestedUnitPrices = [];
+$requestedItemPrIds = [];
 foreach ($items as $item) {
+    $prItemId = (int)($item['pr_item_id'] ?? 0);
+    $itemPrId = (int)($item['pr_id'] ?? 0);
     $sku = trim($item['sku'] ?? '');
     $poQty = (float)($item['po_qty'] ?? 0);
     $unitPrice = (float)($item['unit_price'] ?? 0);
 
-    if ($sku !== '' && $poQty > 0) {
-        $requestedItems[$sku] = $poQty;
-        $requestedUnitPrices[$sku] = max(0, $unitPrice);
+    if ($prItemId > 0 && $itemPrId > 0 && $sku !== '' && $poQty > 0) {
+        $requestedItems[$prItemId] = $poQty;
+        $requestedUnitPrices[$prItemId] = max(0, $unitPrice);
+        $requestedItemPrIds[$prItemId] = $itemPrId;
     }
 }
 
@@ -114,21 +125,43 @@ try {
     if (!in_array('line_total', $poItemColumns, true)) {
         $pdo->exec("ALTER TABLE tbl_purchase_order_items ADD line_total DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER unit_price");
     }
+    if (!in_array('pr_ref_no', $poItemColumns, true)) {
+        $pdo->exec("ALTER TABLE tbl_purchase_order_items ADD pr_ref_no VARCHAR(30) DEFAULT NULL AFTER pr_item_id");
+    }
 
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS tbl_purchase_order_prs (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            po_id INT NOT NULL,
+            pr_id INT NOT NULL,
+            pr_ref_no VARCHAR(30) DEFAULT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_po_pr (po_id, pr_id),
+            INDEX idx_po_prs_po_id (po_id),
+            INDEX idx_po_prs_pr_id (pr_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+
+    $prPlaceholders = implode(',', array_fill(0, count($prIds), '?'));
     $prStmt = $pdo->prepare("
         SELECT pr_id, pr_ref_no
         FROM tbl_purchase_requests
-        WHERE pr_id = ?
+        WHERE pr_id IN ($prPlaceholders)
+          AND status NOT IN ('PO Requested', 'PO Fulfilled', 'Encoded')
     ");
-    $prStmt->execute([$prId]);
-    $pr = $prStmt->fetch(PDO::FETCH_ASSOC);
+    $prStmt->execute($prIds);
+    $prs = $prStmt->fetchAll(PDO::FETCH_ASSOC);
 
-    if (!$pr) {
+    if (count($prs) !== count($prIds)) {
         echo json_encode([
             'status' => 'error',
-            'message' => 'PR request was not found.'
+            'message' => 'One or more PR requests were not found or are already in PO processing.'
         ]);
         exit;
+    }
+    $prsById = [];
+    foreach ($prs as $prRow) {
+        $prsById[(int)$prRow['pr_id']] = $prRow;
     }
 
     $supplierStmt = $pdo->prepare("
@@ -151,6 +184,8 @@ try {
     $itemStmt = $pdo->prepare("
         SELECT
             pri.pr_item_id,
+            pri.pr_id,
+            pr.pr_ref_no,
             pri.sku,
             pri.item_name,
             ti.material_type,
@@ -159,16 +194,18 @@ try {
             pri.request_qty,
             pri.unit
         FROM tbl_purchase_request_items pri
+        INNER JOIN tbl_purchase_requests pr ON pr.pr_id = pri.pr_id
         LEFT JOIN tbl_items ti ON ti.sku = pri.sku
-        WHERE pri.pr_id = ?
-          AND pri.sku IN ($placeholders)
+        WHERE pri.pr_item_id IN ($placeholders)
+          AND pri.pr_id IN ($prPlaceholders)
     ");
-    $itemStmt->execute(array_merge([$prId], array_keys($requestedItems)));
+    $itemStmt->execute(array_merge(array_keys($requestedItems), $prIds));
 
     $poRows = [];
     while ($row = $itemStmt->fetch(PDO::FETCH_ASSOC)) {
-        $poQty = (float)$requestedItems[$row['sku']];
-        $unitPrice = (float)($requestedUnitPrices[$row['sku']] ?? 0);
+        $prItemId = (int)$row['pr_item_id'];
+        $poQty = (float)$requestedItems[$prItemId];
+        $unitPrice = (float)($requestedUnitPrices[$prItemId] ?? 0);
         $lineTotal = $poQty * $unitPrice;
 
         $row['po_qty'] = $poQty;
@@ -194,7 +231,7 @@ try {
             (?, ?, CURDATE(), ?, ?)
     ");
     $headerStmt->execute([
-        $prId,
+        $primaryPrId,
         $supplierId,
         $createdBy,
         $_SESSION['user_code']
@@ -212,16 +249,29 @@ try {
 
     $insertItemStmt = $pdo->prepare("
         INSERT INTO tbl_purchase_order_items
-            (po_id, po_ref_no, pr_item_id, sku, item_name, material_type, description, color, request_qty, po_qty, unit_price, line_total, unit)
+            (po_id, po_ref_no, pr_item_id, pr_ref_no, sku, item_name, material_type, description, color, request_qty, po_qty, unit_price, line_total, unit)
         VALUES
-            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
+
+    $insertPoPrStmt = $pdo->prepare("
+        INSERT IGNORE INTO tbl_purchase_order_prs (po_id, pr_id, pr_ref_no)
+        VALUES (?, ?, ?)
+    ");
+    foreach ($prIds as $linkedPrId) {
+        $insertPoPrStmt->execute([
+            $poId,
+            $linkedPrId,
+            $prsById[$linkedPrId]['pr_ref_no'] ?? null
+        ]);
+    }
 
     foreach ($poRows as $row) {
         $insertItemStmt->execute([
             $poId,
             $poRefNo,
             (int)$row['pr_item_id'],
+            $row['pr_ref_no'],
             $row['sku'],
             $row['item_name'],
             $row['material_type'],
@@ -238,16 +288,20 @@ try {
     $updatePrStatusStmt = $pdo->prepare("
         UPDATE tbl_purchase_requests
         SET status = 'PO Requested'
-        WHERE pr_id = ?
+        WHERE pr_id IN ($prPlaceholders)
     ");
-    $updatePrStatusStmt->execute([$prId]);
+    $updatePrStatusStmt->execute($prIds);
 
     $pdo->commit();
-    audit_log($pdo, 'CREATE', 'Purchase Order', $poRefNo, 'Created PO from PR ' . $pr['pr_ref_no'] . '; purchase_request.status -> "PO Requested".');
+    $prRefNos = array_map(function($prRow) {
+        return $prRow['pr_ref_no'];
+    }, $prs);
+    audit_log($pdo, 'CREATE', 'Purchase Order', $poRefNo, 'Created PO from PR(s) ' . implode(', ', $prRefNos) . '; purchase_request.status -> "PO Requested".');
 
     $printItems = array_map(function($row) {
         return [
             'sku' => $row['sku'],
+            'pr_ref_no' => $row['pr_ref_no'],
             'item_name' => $row['item_name'],
             'material_type' => $row['material_type'],
             'description' => $row['description'],
@@ -267,8 +321,9 @@ try {
             'po_id' => $poId,
             'po_ref_no' => $poRefNo,
             'po_date' => date('Y-m-d'),
-            'pr_id' => (int)$pr['pr_id'],
-            'pr_ref_no' => $pr['pr_ref_no'],
+            'pr_id' => $primaryPrId,
+            'pr_ids' => $prIds,
+            'pr_ref_no' => implode(', ', $prRefNos),
             'created_by' => $createdBy,
             'supplier' => [
                 'supplier_id' => (int)$supplier['supplier_id'],

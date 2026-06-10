@@ -103,8 +103,10 @@ try {
              </a>',
             (int)$row['pr_id']
         );
+        $selectPo = '<input type="checkbox" class="select-pr-for-po" value="' . (int)$row['pr_id'] . '" disabled>';
 
         if (!in_array($status, ['PO Requested', 'PO Fulfilled', 'Encoded'], true)) {
+            $selectPo = '<input type="checkbox" class="select-pr-for-po" value="' . (int)$row['pr_id'] . '">';
             $action .= sprintf(
                 ' <a href="#" class="create-po-request" data-id="%d">
                     <span class="badge badge-secondary">For PO</span>
@@ -124,6 +126,7 @@ try {
 
         $data[] = [
             'pr_id' => (int)$row['pr_id'],
+            'select_po' => $selectPo,
             'items' => $items,
             'pr_ref_no' => htmlspecialchars($row['pr_ref_no'] ?: ('PR-' . str_pad((string)$row['pr_id'], 6, '0', STR_PAD_LEFT))),
             'request_date' => htmlspecialchars($row['request_date']),

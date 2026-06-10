@@ -24,6 +24,19 @@ if ($poId <= 0) {
 }
 
 try {
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS tbl_purchase_order_prs (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            po_id INT NOT NULL,
+            pr_id INT NOT NULL,
+            pr_ref_no VARCHAR(30) DEFAULT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_po_pr (po_id, pr_id),
+            INDEX idx_po_prs_po_id (po_id),
+            INDEX idx_po_prs_pr_id (pr_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+
     $stmt = $pdo->prepare("SELECT po_id, po_ref_no, pr_id, fulfillment_status FROM tbl_purchase_orders WHERE po_id = ? LIMIT 1");
     $stmt->execute([$poId]);
     $po = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -56,14 +69,30 @@ try {
 
     $pdo->beginTransaction();
 
+    $linkedPrIds = [(int)$po['pr_id']];
+    $linkTableStmt = $pdo->prepare("SHOW TABLES LIKE 'tbl_purchase_order_prs'");
+    $linkTableStmt->execute();
+    if ($linkTableStmt->fetchColumn()) {
+        $linkedStmt = $pdo->prepare("SELECT pr_id FROM tbl_purchase_order_prs WHERE po_id = ?");
+        $linkedStmt->execute([$poId]);
+        $linkedPrIds = array_values(array_unique(array_filter(array_map('intval', $linkedStmt->fetchAll(PDO::FETCH_COLUMN)))));
+        if (count($linkedPrIds) === 0) {
+            $linkedPrIds = [(int)$po['pr_id']];
+        }
+    }
+
     $delItems = $pdo->prepare("DELETE FROM tbl_purchase_order_items WHERE po_id = ?");
     $delItems->execute([$poId]);
+
+    $delLinks = $pdo->prepare("DELETE FROM tbl_purchase_order_prs WHERE po_id = ?");
+    $delLinks->execute([$poId]);
 
     $delPo = $pdo->prepare("DELETE FROM tbl_purchase_orders WHERE po_id = ?");
     $delPo->execute([$poId]);
 
-    $resetPr = $pdo->prepare("UPDATE tbl_purchase_requests SET status = 'Pending' WHERE pr_id = ? AND status = 'PO Requested'");
-    $resetPr->execute([(int)$po['pr_id']]);
+    $placeholders = implode(',', array_fill(0, count($linkedPrIds), '?'));
+    $resetPr = $pdo->prepare("UPDATE tbl_purchase_requests SET status = 'Pending' WHERE pr_id IN ($placeholders) AND status = 'PO Requested'");
+    $resetPr->execute($linkedPrIds);
 
     audit_log($pdo, 'DELETE', 'Purchase Order', $po['po_ref_no'] ?: (string)$poId, 'Deleted purchase order; linked PR reset to Pending when applicable.');
 

@@ -43,6 +43,18 @@ try {
     if (!in_array('approval_status', $poColumns, true)) {
         $pdo->exec("ALTER TABLE tbl_purchase_orders ADD approval_status VARCHAR(30) NOT NULL DEFAULT 'Pending' AFTER fulfillment_status");
     }
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS tbl_purchase_order_prs (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            po_id INT NOT NULL,
+            pr_id INT NOT NULL,
+            pr_ref_no VARCHAR(30) DEFAULT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_po_pr (po_id, pr_id),
+            INDEX idx_po_prs_po_id (po_id),
+            INDEX idx_po_prs_pr_id (pr_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
 
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS tbl_purchase_order_items (
@@ -67,7 +79,7 @@ try {
         SELECT
             po.po_id,
             po.po_ref_no,
-            pr.pr_ref_no,
+            COALESCE(GROUP_CONCAT(DISTINCT popr.pr_ref_no ORDER BY popr.pr_id SEPARATOR ', '), pr.pr_ref_no) AS pr_ref_no,
             po.po_date,
             po.receipt_no,
             po.date_received,
@@ -75,13 +87,18 @@ try {
             COALESCE(po.approval_status, 'Pending') AS approval_status,
             s.supplier_name,
             po.created_by,
-            COUNT(poi.po_item_id) AS item_count,
-            COALESCE(SUM(poi.po_qty), 0) AS total_po_qty
+            COALESCE(poi_tot.item_count, 0) AS item_count,
+            COALESCE(poi_tot.total_po_qty, 0) AS total_po_qty
         FROM tbl_purchase_orders po
         LEFT JOIN tbl_purchase_requests pr ON pr.pr_id = po.pr_id
+        LEFT JOIN tbl_purchase_order_prs popr ON popr.po_id = po.po_id
         LEFT JOIN tbl_suppliers s ON s.supplier_id = po.supplier_id
-        LEFT JOIN tbl_purchase_order_items poi ON poi.po_id = po.po_id
-        GROUP BY po.po_id, po.po_ref_no, pr.pr_ref_no, po.po_date, po.receipt_no, po.date_received, po.fulfillment_status, po.approval_status, s.supplier_name, po.created_by
+        LEFT JOIN (
+            SELECT po_id, COUNT(*) AS item_count, SUM(po_qty) AS total_po_qty
+            FROM tbl_purchase_order_items
+            GROUP BY po_id
+        ) poi_tot ON poi_tot.po_id = po.po_id
+        GROUP BY po.po_id, po.po_ref_no, pr.pr_ref_no, po.po_date, po.receipt_no, po.date_received, po.fulfillment_status, po.approval_status, s.supplier_name, po.created_by, poi_tot.item_count, poi_tot.total_po_qty
         ORDER BY po.po_id DESC
     ");
 

@@ -71,8 +71,9 @@ try {
             poi.unit,
             COALESCE(poi.unit_price, 0) AS po_unit_price
         FROM tbl_purchase_requests pr
-        INNER JOIN tbl_purchase_orders po ON po.pr_id = pr.pr_id
-        INNER JOIN tbl_purchase_order_items poi ON poi.po_id = po.po_id
+        INNER JOIN tbl_purchase_request_items pri ON pri.pr_id = pr.pr_id
+        INNER JOIN tbl_purchase_order_items poi ON poi.pr_item_id = pri.pr_item_id
+        INNER JOIN tbl_purchase_orders po ON po.po_id = poi.po_id
         WHERE pr.pr_id = ? AND poi.po_item_id = ?
         LIMIT 1
     ");
@@ -186,13 +187,14 @@ try {
     $remainingStmt = $pdo->prepare("
         SELECT COUNT(*)
         FROM tbl_purchase_order_items poi
+        INNER JOIN tbl_purchase_request_items pri ON pri.pr_item_id = poi.pr_item_id
         LEFT JOIN tbl_inventory_in ii
             ON ii.sku = poi.sku
            AND ii.receipt_no = ?
            AND ii.po_code = ?
-        WHERE poi.po_id = ? AND ii.id IS NULL
+        WHERE poi.po_id = ? AND pri.pr_id = ? AND ii.id IS NULL
     ");
-    $remainingStmt->execute([$row['receipt_no'], $row['po_ref_no'], (int)$row['po_id']]);
+    $remainingStmt->execute([$row['receipt_no'], $row['po_ref_no'], (int)$row['po_id'], $prId]);
     $remaining = (int)$remainingStmt->fetchColumn();
 
     if ($remaining === 0) {

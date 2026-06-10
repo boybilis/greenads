@@ -28,6 +28,19 @@ if ($prId <= 0 && $poId <= 0) {
 }
 
 try {
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS tbl_purchase_order_prs (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            po_id INT NOT NULL,
+            pr_id INT NOT NULL,
+            pr_ref_no VARCHAR(30) DEFAULT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_po_pr (po_id, pr_id),
+            INDEX idx_po_prs_po_id (po_id),
+            INDEX idx_po_prs_pr_id (pr_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+
     if ($poId > 0) {
         $headerStmt = $pdo->prepare("
             SELECT
@@ -39,11 +52,12 @@ try {
                 po.receipt_no,
                 po.date_received
             FROM tbl_purchase_orders po
-            INNER JOIN tbl_purchase_requests pr ON pr.pr_id = po.pr_id
-            WHERE po.po_id = ?
+            LEFT JOIN tbl_purchase_order_prs popr ON popr.po_id = po.po_id AND popr.pr_id = ?
+            INNER JOIN tbl_purchase_requests pr ON pr.pr_id = COALESCE(popr.pr_id, po.pr_id)
+            WHERE po.po_id = ? AND pr.pr_id = ?
             LIMIT 1
         ");
-        $headerStmt->execute([$poId]);
+        $headerStmt->execute([$prId, $poId, $prId]);
     } else {
         $headerStmt = $pdo->prepare("
             SELECT
@@ -86,10 +100,12 @@ try {
             poi.unit,
             COALESCE(poi.unit_price, 0) AS unit_price
         FROM tbl_purchase_order_items poi
+        INNER JOIN tbl_purchase_request_items pri ON pri.pr_item_id = poi.pr_item_id
         WHERE poi.po_id = ?
+          AND pri.pr_id = ?
         ORDER BY poi.item_name ASC, poi.sku ASC
     ");
-    $itemStmt->execute([(int)$header['po_id']]);
+    $itemStmt->execute([(int)$header['po_id'], (int)$header['pr_id']]);
     $items = $itemStmt->fetchAll(PDO::FETCH_ASSOC);
 
     echo json_encode([

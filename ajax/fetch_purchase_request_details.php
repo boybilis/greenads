@@ -39,6 +39,7 @@ try {
 
     $itemStmt = $pdo->prepare("
     SELECT 
+        pri.pr_item_id,
         pri.sku,
         pri.item_name,
         pri.description,
@@ -58,6 +59,7 @@ $items = [];
 
 while ($row = $itemStmt->fetch(PDO::FETCH_ASSOC)) {
     $items[] = [
+        'pr_item_id' => (int)$row['pr_item_id'],
         'sku' => $row['sku'],
         'item_name' => $row['item_name'],
         'description' => $row['description'],
