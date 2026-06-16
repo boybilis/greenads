@@ -156,10 +156,10 @@ foreach ($items as $item) {
         <div class="grid">
             <div>
                 <div class="section-title">Supplier Details</div>
-                <div><strong><?= htmlspecialchars($po['supplier_name'] ?: '-'); ?></strong></div>
-                <div>Owner: <?= htmlspecialchars($po['supplier_owner'] ?: '-'); ?></div>
+                <div><strong>VENDOR NAME:</strong> <?= htmlspecialchars($po['supplier_name'] ?: '-'); ?></div>
+                <div><strong>CONTACT PERSON:</strong> <?= htmlspecialchars($po['supplier_owner'] ?: '-'); ?></div>
                 <div>Address: <?= htmlspecialchars($po['address'] ?: '-'); ?></div>
-                <div>Contact: <?= htmlspecialchars($po['contact_no'] ?: '-'); ?></div>
+                <div><?= htmlspecialchars($po['contact_no'] ?: '-'); ?></div>
                 <div>Email: <?= htmlspecialchars($po['email'] ?: '-'); ?></div>
             </div>
             <div>
