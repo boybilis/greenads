@@ -1896,84 +1896,73 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 		<hr>
 
 		<div class="row">
+		  <div class="col-md-3">
+			<div class="form-group">
+			  <label>Month</label>
+			  <select id="inventoryReportMonth" class="form-control">
+				<?php for ($m = 1; $m <= 12; $m++) { ?>
+				  <option value="<?= $m; ?>" <?= ((int)date('n') === $m) ? 'selected' : ''; ?>>
+					<?= date('F', mktime(0, 0, 0, $m, 1)); ?>
+				  </option>
+				<?php } ?>
+			  </select>
+			</div>
+		  </div>
+		  <div class="col-md-3">
+			<div class="form-group">
+			  <label>Year</label>
+			  <select id="inventoryReportYear" class="form-control">
+				<?php for ($y = (int)date('Y') - 5; $y <= (int)date('Y') + 1; $y++) { ?>
+				  <option value="<?= $y; ?>" <?= ((int)date('Y') === $y) ? 'selected' : ''; ?>>
+					<?= $y; ?>
+				  </option>
+				<?php } ?>
+			  </select>
+			</div>
+		  </div>
+		  <div class="col-md-3 d-flex align-items-end">
+			<div class="form-group w-100">
+			  <button type="button" class="btn btn-info btn-block" id="reloadInventoryMonthlyReport">Load Report</button>
+			</div>
+		  </div>
+		  <div class="col-md-3">
+			<div class="info-box bg-success">
+			  <div class="info-box-content">
+				<span class="info-box-text">Grand Total Value</span>
+				<span class="info-box-number" id="inventoryMonthlyTotalValue">0.00</span>
+			  </div>
+			</div>
+		  </div>
+		</div>
+
+		<div class="row">
 		  <div class="col-md-12">
 			<div class="card">
 			  <div class="card-header border-info">
-				<h3 class="card-title">Inventory Stock Position</h3>
+				<h3 class="card-title">Monthly Inventory Summary</h3>
 			  </div>
 			  <div class="card-body p-3">
 				<div class="table-responsive">
-				  <table class="table table-bordered table-striped m-0" id="inventory-report-list">
+				  <table class="table table-bordered table-striped m-0" id="inventory-monthly-summary">
 					<thead>
 					  <tr>
 						<th>SKU</th>
-						<th>Item Details</th>
-						<th>Stocks</th>
-						<th>Cost</th>
-						<th>Status</th>
-						<th>Location</th>
-					  </tr>
-					</thead>
-					<tbody></tbody>
-				  </table>
-				</div>
-			  </div>
-			</div>
-		  </div>
-		</div>
-
-		<div class="row">
-		  <div class="col-md-12">
-			<div class="card">
-			  <div class="card-header border-success">
-				<h3 class="card-title">Inventory IN Report</h3>
-			  </div>
-			  <div class="card-body p-3">
-				<div class="table-responsive">
-				  <table class="table table-bordered table-striped m-0" id="inventory-report-in-history">
-					<thead>
-					  <tr>
-						<th>Date</th>
-						<th>SKU</th>
-						<th>Item</th>
-						<th>Before</th>
-						<th>Quantity</th>
-						<th>After</th>
+						<th>Item Name</th>
+						<th>Beginning Inventory</th>
+						<th>All IN</th>
+						<th>All OUT</th>
+						<th>Remaining Inventory</th>
 						<th>Unit Price</th>
-						<th>Receipt No.</th>
-						<th>PO Code</th>
+						<th>Total Value</th>
 					  </tr>
 					</thead>
 					<tbody></tbody>
-				  </table>
-				</div>
-			  </div>
-			</div>
-		  </div>
-		</div>
-
-		<div class="row">
-		  <div class="col-md-12">
-			<div class="card">
-			  <div class="card-header border-warning">
-				<h3 class="card-title">Inventory OUT Report</h3>
-			  </div>
-			  <div class="card-body p-3">
-				<div class="table-responsive">
-				  <table class="table table-bordered table-striped m-0" id="inventory-report-out-history">
-					<thead>
+					<tfoot>
 					  <tr>
-						<th>Date</th>
-						<th>SKU</th>
-						<th>Item</th>
-						<th>Before</th>
-						<th>Quantity</th>
-						<th>After</th>
-						<th>Reference No.</th>
-						<th>Remarks</th>
+						<th colspan="7" class="text-right">Grand Total Value</th>
+						<th id="inventoryMonthlyTotalValueFooter">0.00</th>
 					  </tr>
-					</thead>
-					<tbody></tbody>
+					</tfoot>
 				  </table>
 				</div>
 			  </div>
@@ -3151,7 +3140,7 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <script src="dist/js/pages/dashboard2.js"></script>
 
 <script>
-let ortable, itemspo, stocktable, inventorytable, invLowStockTable, invInHistoryTable, invOutHistoryTable, inventoryReportTable, inventoryReportInTable, inventoryReportOutTable, projecttable, projectMrReportTable, supplierTable, purchaseRequestTable, inventoryPurchaseRequestTable, purchaseOrderTable, userTable, auditLogTable;
+let ortable, itemspo, stocktable, inventorytable, invLowStockTable, invInHistoryTable, invOutHistoryTable, inventoryMonthlySummaryTable, projecttable, projectMrReportTable, supplierTable, purchaseRequestTable, inventoryPurchaseRequestTable, purchaseOrderTable, userTable, auditLogTable;
 let myGeneratedPrTable;
 let encodePrItemsCache = {};
 let pendingEncodeAfterProductSave = null;
@@ -3271,29 +3260,34 @@ $(document).ready(function() {
         order: [[0, 'desc']]
     });
 
-	if ($('#inventory-report-list').length) {
-	inventoryReportTable = $('#inventory-report-list').DataTable({
-        ajax: 'ajax/fetch_items_inventory.php',
-        responsive: true,
-        autoWidth: false
-    });
-    }
-
-	if ($('#inventory-report-in-history').length) {
-	inventoryReportInTable = $('#inventory-report-in-history').DataTable({
-        ajax: 'ajax/fetch_inventory_in_history.php',
-        responsive: true,
-        autoWidth: false,
-        order: [[0, 'desc']]
-    });
-    }
-
-	if ($('#inventory-report-out-history').length) {
-	inventoryReportOutTable = $('#inventory-report-out-history').DataTable({
-        ajax: 'ajax/fetch_inventory_out_history.php',
+	if ($('#inventory-monthly-summary').length) {
+	inventoryMonthlySummaryTable = $('#inventory-monthly-summary').DataTable({
+        ajax: {
+            url: 'ajax/fetch_inventory_monthly_summary.php',
+            type: 'GET',
+            data: function(d) {
+                d.month = $('#inventoryReportMonth').val();
+                d.year = $('#inventoryReportYear').val();
+            },
+            dataSrc: function(json) {
+                const totalValue = json.summary?.grand_total_price || json.summary?.total_value || '0.00';
+                $('#inventoryMonthlyTotalValue').text(totalValue);
+                $('#inventoryMonthlyTotalValueFooter').text(totalValue);
+                return json.data || [];
+            }
+        },
         responsive: true,
         autoWidth: false,
-        order: [[0, 'desc']]
+        columns: [
+            { data: 'sku' },
+            { data: 'item_name' },
+            { data: 'beginning_inventory' },
+            { data: 'in_qty' },
+            { data: 'out_qty' },
+            { data: 'remaining_inventory' },
+            { data: 'unit_price' },
+            { data: 'total_price' }
+        ]
     });
     }
 
@@ -3975,15 +3969,15 @@ $(document).ready(function() {
             $(document).trigger('material-request-section-opened');
         }
         if (target === 'inventory_report') {
-            if (inventoryReportTable) {
-                inventoryReportTable.ajax.reload(null, false);
+            if (inventoryMonthlySummaryTable) {
+                inventoryMonthlySummaryTable.ajax.reload(null, false);
             }
-            if (inventoryReportInTable) {
-                inventoryReportInTable.ajax.reload(null, false);
-            }
-            if (inventoryReportOutTable) {
-                inventoryReportOutTable.ajax.reload(null, false);
-            }
+        }
+    });
+
+    $('#reloadInventoryMonthlyReport, #inventoryReportMonth, #inventoryReportYear').on('click change', function() {
+        if (inventoryMonthlySummaryTable) {
+            inventoryMonthlySummaryTable.ajax.reload();
         }
     });
 
