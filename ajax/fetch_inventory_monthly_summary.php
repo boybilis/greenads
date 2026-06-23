@@ -19,6 +19,11 @@ $startDate = sprintf('%04d-%02d-01', $year, $month);
 $endDate = date('Y-m-t', strtotime($startDate));
 
 try {
+    $itemColumns = $pdo->query("SHOW COLUMNS FROM tbl_items")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('created_at', $itemColumns, true)) {
+        $pdo->exec("ALTER TABLE tbl_items ADD created_at DATETIME DEFAULT NULL");
+    }
+
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS tbl_inventory_in (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -94,11 +99,12 @@ try {
             WHERE transaction_date > ?
             GROUP BY sku
         ) ao ON ao.sku = i.sku
+        WHERE i.created_at IS NULL OR DATE(i.created_at) <= ?
         ORDER BY i.material_name ASC, i.sku ASC
     ";
 
     $stmt = $pdo->prepare($sql);
-    $stmt->execute([$startDate, $endDate, $startDate, $endDate, $endDate, $endDate]);
+    $stmt->execute([$startDate, $endDate, $startDate, $endDate, $endDate, $endDate, $endDate]);
 
     $data = [];
     $totalValue = 0;

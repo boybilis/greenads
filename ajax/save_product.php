@@ -3,6 +3,12 @@ session_start();
 include_once('config.php');
 include_once('audit_helper.php');
 
+$itemColumns = $pdo->query("SHOW COLUMNS FROM tbl_items")->fetchAll(PDO::FETCH_COLUMN);
+if (!in_array('created_at', $itemColumns, true)) {
+	$pdo->exec("ALTER TABLE tbl_items ADD created_at DATETIME DEFAULT NULL");
+	$itemColumns[] = 'created_at';
+}
+
 $userType = $_SESSION['user_type'] ?? '';
 $canManagePricing = in_array($userType, ['Admin', 'Purchasing'], true);
 $isPurchasingOnly = ($userType === 'Purchasing');
@@ -165,6 +171,9 @@ if($pid!=""){
         if ($isPurchasingOnly) {
             $data['quantity'] = 0;
         }
+		if (in_array('created_at', $itemColumns, true)) {
+			$data['created_at'] = date('Y-m-d H:i:s');
+		}
 		$insert     =   $db->insert('tbl_items',$data);
 		if($insert){ audit_log($pdo, 'CREATE', 'Items', $sku, 'Added item ' . ($_POST['material_name'] ?? '') . '.'); echo 1; } else { echo 0; }
 	}else{
