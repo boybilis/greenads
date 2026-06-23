@@ -292,12 +292,33 @@ if (!isset($_SESSION['user_type']) ||
   </li>
 <?php } ?>
 		  
-		  <?php if ($sidebarUserType !== 'Inventory' && $sidebarUserType !== 'Purchasing') { ?>
-		   <li class="nav-item">
-            <a href="#" data-target="report" class="nav-link" id="showReport">
-              <i class="nav-icon fas fa-file"></i>
-              <p>Reports</p>
+		  <?php if ($sidebarUserType !== 'Purchasing') { ?>
+		   <li class="nav-item has-treeview">
+            <a href="#" class="nav-link">
+              <i class="nav-icon fas fa-chart-bar"></i>
+              <p>
+                Reports
+                <i class="right fas fa-angle-left"></i>
+              </p>
             </a>
+            <ul class="nav nav-treeview">
+              <?php if ($sidebarUserType !== 'Inventory') { ?>
+              <li class="nav-item">
+                <a href="#" data-target="report" class="nav-link" id="showReport">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>Project</p>
+                </a>
+              </li>
+              <?php } ?>
+              <?php if (in_array($sidebarUserType, ['Admin', 'Inventory'], true)) { ?>
+              <li class="nav-item">
+                <a href="#" data-target="inventory_report" class="nav-link" id="showInventoryReport">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>Inventory</p>
+                </a>
+              </li>
+              <?php } ?>
+            </ul>
           </li>
 		  <?php } ?>
 		  <li class="nav-header">MANAGE</li>
@@ -1857,6 +1878,113 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 	</div> <!-- end container fluid -->
 	</section>
 	
+	<section class="content" id="inventory_report">
+	 <div class="container-fluid">
+	  <div class="content-header">
+      <div class="container-fluid">
+        <div class="row mb-2">
+          <div class="col-sm-6">
+            <h1 class="m-0 text-dark">Inventory Report</h1>
+          </div>
+          <div class="col-sm-6">
+            <ol class="breadcrumb float-sm-right">
+              <li class="breadcrumb-item"><a href="dashboard">Home</a></li>
+              <li class="breadcrumb-item active">Inventory Report</li>
+            </ol>
+          </div>
+        </div>
+		<hr>
+
+		<div class="row">
+		  <div class="col-md-12">
+			<div class="card">
+			  <div class="card-header border-info">
+				<h3 class="card-title">Inventory Stock Position</h3>
+			  </div>
+			  <div class="card-body p-3">
+				<div class="table-responsive">
+				  <table class="table table-bordered table-striped m-0" id="inventory-report-list">
+					<thead>
+					  <tr>
+						<th>SKU</th>
+						<th>Item Details</th>
+						<th>Stocks</th>
+						<th>Cost</th>
+						<th>Status</th>
+						<th>Location</th>
+					  </tr>
+					</thead>
+					<tbody></tbody>
+				  </table>
+				</div>
+			  </div>
+			</div>
+		  </div>
+		</div>
+
+		<div class="row">
+		  <div class="col-md-12">
+			<div class="card">
+			  <div class="card-header border-success">
+				<h3 class="card-title">Inventory IN Report</h3>
+			  </div>
+			  <div class="card-body p-3">
+				<div class="table-responsive">
+				  <table class="table table-bordered table-striped m-0" id="inventory-report-in-history">
+					<thead>
+					  <tr>
+						<th>Date</th>
+						<th>SKU</th>
+						<th>Item</th>
+						<th>Before</th>
+						<th>Quantity</th>
+						<th>After</th>
+						<th>Unit Price</th>
+						<th>Receipt No.</th>
+						<th>PO Code</th>
+					  </tr>
+					</thead>
+					<tbody></tbody>
+				  </table>
+				</div>
+			  </div>
+			</div>
+		  </div>
+		</div>
+
+		<div class="row">
+		  <div class="col-md-12">
+			<div class="card">
+			  <div class="card-header border-warning">
+				<h3 class="card-title">Inventory OUT Report</h3>
+			  </div>
+			  <div class="card-body p-3">
+				<div class="table-responsive">
+				  <table class="table table-bordered table-striped m-0" id="inventory-report-out-history">
+					<thead>
+					  <tr>
+						<th>Date</th>
+						<th>SKU</th>
+						<th>Item</th>
+						<th>Before</th>
+						<th>Quantity</th>
+						<th>After</th>
+						<th>Reference No.</th>
+						<th>Remarks</th>
+					  </tr>
+					</thead>
+					<tbody></tbody>
+				  </table>
+				</div>
+			  </div>
+			</div>
+		  </div>
+		</div>
+      </div>
+    </div>
+	</div>
+	</section>
+	
 	
 	
 	<section class="content" id="setting">
@@ -3023,7 +3151,7 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <script src="dist/js/pages/dashboard2.js"></script>
 
 <script>
-let ortable, itemspo, stocktable, inventorytable, invLowStockTable, invInHistoryTable, invOutHistoryTable, projecttable, projectMrReportTable, supplierTable, purchaseRequestTable, inventoryPurchaseRequestTable, purchaseOrderTable, userTable, auditLogTable;
+let ortable, itemspo, stocktable, inventorytable, invLowStockTable, invInHistoryTable, invOutHistoryTable, inventoryReportTable, inventoryReportInTable, inventoryReportOutTable, projecttable, projectMrReportTable, supplierTable, purchaseRequestTable, inventoryPurchaseRequestTable, purchaseOrderTable, userTable, auditLogTable;
 let myGeneratedPrTable;
 let encodePrItemsCache = {};
 let pendingEncodeAfterProductSave = null;
@@ -3142,6 +3270,32 @@ $(document).ready(function() {
         autoWidth: false,
         order: [[0, 'desc']]
     });
+
+	if ($('#inventory-report-list').length) {
+	inventoryReportTable = $('#inventory-report-list').DataTable({
+        ajax: 'ajax/fetch_items_inventory.php',
+        responsive: true,
+        autoWidth: false
+    });
+    }
+
+	if ($('#inventory-report-in-history').length) {
+	inventoryReportInTable = $('#inventory-report-in-history').DataTable({
+        ajax: 'ajax/fetch_inventory_in_history.php',
+        responsive: true,
+        autoWidth: false,
+        order: [[0, 'desc']]
+    });
+    }
+
+	if ($('#inventory-report-out-history').length) {
+	inventoryReportOutTable = $('#inventory-report-out-history').DataTable({
+        ajax: 'ajax/fetch_inventory_out_history.php',
+        responsive: true,
+        autoWidth: false,
+        order: [[0, 'desc']]
+    });
+    }
 
     inventoryPurchaseRequestTable = $('#inventory-pr-list').DataTable({
         ajax: 'ajax/fetch_my_purchase_requests.php',
@@ -3795,6 +3949,9 @@ $(document).ready(function() {
         e.preventDefault();
 
         let target = $(this).data('target');
+        if (!target) {
+            return;
+        }
 
         // Hide all sections
         $('section').addClass('d-none');
@@ -3816,6 +3973,17 @@ $(document).ready(function() {
                 myGeneratedPrTable.ajax.reload(null, false);
             }
             $(document).trigger('material-request-section-opened');
+        }
+        if (target === 'inventory_report') {
+            if (inventoryReportTable) {
+                inventoryReportTable.ajax.reload(null, false);
+            }
+            if (inventoryReportInTable) {
+                inventoryReportInTable.ajax.reload(null, false);
+            }
+            if (inventoryReportOutTable) {
+                inventoryReportOutTable.ajax.reload(null, false);
+            }
         }
     });
 
