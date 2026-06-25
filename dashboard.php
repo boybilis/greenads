@@ -2352,7 +2352,24 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
             if (is_readable($categoryFile)) {
                 $jsonCategories = json_decode((string)file_get_contents($categoryFile), true);
                 if (is_array($jsonCategories)) {
-                    $itemCategories = $jsonCategories;
+                    $itemCategories = [];
+                    foreach ($jsonCategories as $categoryRow) {
+                        $categoryCode = preg_replace('/[^a-z0-9_]/', '', strtolower((string)($categoryRow['code'] ?? '')));
+                        $categoryName = preg_replace('/\s+/', ' ', trim((string)($categoryRow['name'] ?? '')));
+                        if ($categoryCode !== '' && $categoryName !== '' && mb_strlen($categoryName, 'UTF-8') <= 60 && preg_match('/^[A-Za-z0-9][A-Za-z0-9 &()\/._-]*$/', $categoryName)) {
+                            $itemCategories[] = [
+                                'code' => $categoryCode,
+                                'name' => $categoryName
+                            ];
+                        }
+                    }
+                    if (count($itemCategories) === 0) {
+                        $itemCategories = [
+                            ['code' => 'fab', 'name' => 'Fabric'],
+                            ['code' => 'threads', 'name' => 'Threads'],
+                            ['code' => 'acc', 'name' => 'Accessories']
+                        ];
+                    }
                 }
             }
             ?>

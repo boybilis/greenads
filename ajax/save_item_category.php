@@ -14,9 +14,17 @@ if (!in_array($_SESSION['user_type'] ?? '', ['Admin', 'Inventory'], true)) {
     exit;
 }
 
-$categoryName = trim((string)($_POST['category_name'] ?? ''));
+$categoryName = preg_replace('/\s+/', ' ', trim((string)($_POST['category_name'] ?? '')));
 if ($categoryName === '') {
     echo json_encode(['status' => 'error', 'message' => 'Category name is required.']);
+    exit;
+}
+if (mb_strlen($categoryName, 'UTF-8') > 60) {
+    echo json_encode(['status' => 'error', 'message' => 'Category name must be 60 characters or less.']);
+    exit;
+}
+if (!preg_match('/^[A-Za-z0-9][A-Za-z0-9 &()\/._-]*$/', $categoryName)) {
+    echo json_encode(['status' => 'error', 'message' => 'Category name contains invalid characters.']);
     exit;
 }
 
@@ -27,6 +35,23 @@ function category_code_from_name($name) {
     return $code !== '' ? $code : 'category';
 }
 
+function clean_category_row($category) {
+    $name = preg_replace('/\s+/', ' ', trim((string)($category['name'] ?? '')));
+    $code = category_code_from_name($category['code'] ?? $name);
+
+    if ($name === '' || mb_strlen($name, 'UTF-8') > 60) {
+        return null;
+    }
+    if (!preg_match('/^[A-Za-z0-9][A-Za-z0-9 &()\/._-]*$/', $name)) {
+        return null;
+    }
+    if (!preg_match('/^[a-z0-9_]{1,80}$/', $code)) {
+        return null;
+    }
+
+    return ['code' => $code, 'name' => $name];
+}
+
 $categoryFile = dirname(__DIR__) . '/data/item_categories.json';
 $categoryDir = dirname($categoryFile);
 
@@ -34,6 +59,11 @@ if (!is_dir($categoryDir) && !mkdir($categoryDir, 0775, true)) {
     http_response_code(500);
     echo json_encode(['status' => 'error', 'message' => 'Unable to create category storage.']);
     exit;
+}
+
+$htaccessPath = $categoryDir . '/.htaccess';
+if (!file_exists($htaccessPath)) {
+    @file_put_contents($htaccessPath, "Require all denied\nDeny from all\n", LOCK_EX);
 }
 
 $defaultCategories = [
@@ -46,7 +76,14 @@ $categories = $defaultCategories;
 if (is_readable($categoryFile)) {
     $decoded = json_decode((string)file_get_contents($categoryFile), true);
     if (is_array($decoded)) {
-        $categories = $decoded;
+        $categories = [];
+        foreach ($decoded as $category) {
+            $clean = clean_category_row(is_array($category) ? $category : []);
+            if ($clean !== null) {
+                $categories[$clean['code']] = $clean;
+            }
+        }
+        $categories = array_values($categories);
     }
 }
 
