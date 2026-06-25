@@ -4658,12 +4658,21 @@ $("#orForm").on("submit", function(e) {
 
     success: function(res) {
       if (res.status === "success") {
-        toastr.success("OR saved successfully. OR No: " + res.or_no);
+        toastr.success(res.message || ("MR saved successfully. MR No: " + (res.or_no || "")));
 
          $("#orForm")[0].reset();
         $("#orItemsTable tbody").html("");
         $("#grandTotal").val("0.00");
 		ortable.ajax.reload(null, false);
+        if (purchaseRequestTable) {
+          purchaseRequestTable.ajax.reload(null, false);
+        }
+        if (inventoryPurchaseRequestTable) {
+          inventoryPurchaseRequestTable.ajax.reload(null, false);
+        }
+        if (myGeneratedPrTable) {
+          myGeneratedPrTable.ajax.reload(null, false);
+        }
 
       } else {
         toastr.error(res.message);

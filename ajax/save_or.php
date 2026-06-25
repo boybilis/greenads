@@ -225,7 +225,7 @@ try {
                     'request_qty' => 0.0,
                     'on_hand_qty' => $itemMetaBySku[$sku]['on_hand_qty'],
                     'reserved_qty' => $itemMetaBySku[$sku]['reserved_qty'],
-                    'available_qty' => $itemMetaBySku[$sku]['on_hand_qty'] - $itemMetaBySku[$sku]['reserved_qty'],
+                    'available_qty' => max(0, $itemMetaBySku[$sku]['on_hand_qty'] - $itemMetaBySku[$sku]['reserved_qty']),
                     'reorder_level' => $itemMetaBySku[$sku]['reorder_level']
                 ];
             }
@@ -233,8 +233,9 @@ try {
         }
     }
 
-    if (count($allocatedItems) === 0) {
-        throw new Exception("No available stock to save in Material Request.");
+    $hasAllocatedMrItems = count($allocatedItems) > 0;
+    if (!$hasAllocatedMrItems && count($excessBySku) === 0) {
+        throw new Exception("No valid Material Request or Purchase Request items found.");
     }
 
     // INSERT AVAILABLE ITEMS INTO MR
@@ -384,11 +385,26 @@ try {
         }
     }
 
+    if (!$hasAllocatedMrItems && !$isUpdate) {
+        $deleteEmptyMr = $conn->prepare("DELETE FROM tbl_or WHERE or_id = ?");
+        $deleteEmptyMr->bind_param("i", $or_id);
+        if (!$deleteEmptyMr->execute()) {
+            throw new Exception("Failed to remove empty Material Request.");
+        }
+        $or_no = null;
+    }
+
     $conn->commit();
 
-    $saveMessage = ($isUpdate ? "Material Request updated successfully." : "Material Request saved successfully.");
+    if (!$hasAllocatedMrItems && $createdPrRefNo !== null) {
+        $saveMessage = "No available stock for Material Request. Full quantity was moved to Purchase Request " . $createdPrRefNo . ".";
+    } else {
+        $saveMessage = ($isUpdate ? "Material Request updated successfully." : "Material Request saved successfully.");
+    }
     if ($createdPrRefNo !== null) {
-        $saveMessage .= " Excess quantity was moved to Purchase Request " . $createdPrRefNo . ".";
+        if ($hasAllocatedMrItems) {
+            $saveMessage .= " Excess quantity was moved to Purchase Request " . $createdPrRefNo . ".";
+        }
     }
 
     echo json_encode([
