@@ -14,6 +14,18 @@ $or_id = $_POST['or_id'];
 
 // ✔ use dynamic get method
 $or = $db->getTblOrByOrId($or_id);
+if (!$or || !isset($or[0])) {
+    echo json_encode([
+        "status" => "error",
+        "message" => "Material Request not found."
+    ]);
+    exit;
+}
+
+$projectStmt = $pdo->prepare("SELECT proj_name FROM tbl_project WHERE proj_code = ? LIMIT 1");
+$projectStmt->execute([$or[0]['proj_code'] ?? '']);
+$project = $projectStmt->fetch(PDO::FETCH_ASSOC);
+$or[0]['proj_name'] = $project['proj_name'] ?? '';
 
 // ✔ get items
 $items = $db->getTblOrItemsByOrId($or_id);

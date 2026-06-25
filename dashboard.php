@@ -1346,7 +1346,7 @@ if (!isset($_SESSION['user_type']) ||
             <label>Project</label>
            <?php
 		   
-		   if (isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'Admin') { 
+		   if (isset($_SESSION['user_type']) && in_array($_SESSION['user_type'], ['Admin', 'Inventory'], true)) { 
             $projs = $db->getAllRecords("tbl_project", "proj_code, proj_name", "AND " . $projectApprovalFilterSql, "ORDER BY proj_code ASC");
            }else{ 
 			
@@ -4807,6 +4807,29 @@ $(document).on("click", ".delete-or", function(e) {
 
 
 //edit or
+function setMaterialRequestProject(projCode, projName) {
+  const select = $("#proj_code");
+  const code = String(projCode || '');
+  if (code === '') {
+    select.val('');
+    return;
+  }
+
+  const exists = select.find('option').filter(function() {
+    return $(this).val() === code;
+  }).length > 0;
+
+  if (!exists) {
+    const label = projName ? (code + ' : ' + projName) : code;
+    select.append($('<option>', {
+      value: code,
+      text: label
+    }));
+  }
+
+  select.val(code);
+}
+
 $(document).on("click", ".edit-or", function(e) {
   e.preventDefault();
 
@@ -4826,7 +4849,7 @@ $(document).on("click", ".edit-or", function(e) {
 	$("input[name='or_id']").val(data.or_id);
     $("input[name='or_no']").val(data.or_no);
     $("input[name='or_date']").val(data.or_date);
-    $("#proj_code").val(data.proj_code);
+    setMaterialRequestProject(data.proj_code, data.proj_name);
     $("textarea[name='remarks']").val(data.remarks);
 
     $("#orItemsTable tbody").empty();
@@ -4929,7 +4952,7 @@ $(document).on("click", ".view-or", function(e) {
         $("input[name='or_no']").val(data.or_no);
         $("input[name='or_date']").val(data.or_date);
         $("input[name='dept_code']").val(data.dept_code);
-       $("#proj_code").val(data.proj_code);
+       setMaterialRequestProject(data.proj_code, data.proj_name);
         $("textarea[name='remarks']").val(data.remarks);
 
         $("#orItemsTable tbody").empty();
