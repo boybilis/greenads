@@ -2342,12 +2342,29 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
           </div>
 
           <div class="form-group">
+            <?php
+            $categoryFile = __DIR__ . '/data/item_categories.json';
+            $itemCategories = [
+                ['code' => 'fab', 'name' => 'Fabric'],
+                ['code' => 'threads', 'name' => 'Threads'],
+                ['code' => 'acc', 'name' => 'Accessories']
+            ];
+            if (is_readable($categoryFile)) {
+                $jsonCategories = json_decode((string)file_get_contents($categoryFile), true);
+                if (is_array($jsonCategories)) {
+                    $itemCategories = $jsonCategories;
+                }
+            }
+            ?>
             <label>Category</label>
+            <a href="#" id="openAddCategoryModal" class="float-right small">Add new Category</a>
             <select class="form-control" name="category" id="category" required>
               <option value="">-Select-</option>
-              <option value="fab">Fabric</option>
-              <option value="threads">Threads</option>
-              <option value="acc">Accessories</option>
+              <?php foreach ($itemCategories as $categoryRow) { ?>
+                <option value="<?= htmlspecialchars($categoryRow['code'] ?? ''); ?>">
+                  <?= htmlspecialchars($categoryRow['name'] ?? ''); ?>
+                </option>
+              <?php } ?>
             </select>
           </div>
 
@@ -2418,6 +2435,31 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
       </form>
 
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="categoryModal" tabindex="-1" role="dialog" aria-labelledby="categoryModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="categoryModalLabel">Add Category</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <form id="categoryForm">
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Category Name</label>
+            <input type="text" class="form-control" name="category_name" id="new_category_name" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-info" id="saveCategoryBtn">Save Category</button>
+        </div>
+      </form>
     </div>
   </div>
 </div>
@@ -4158,6 +4200,52 @@ $('#material_name, #color, #gsm').on('input blur', buildSkuPreview);
     }
 
     toastr.success('Converted yards placed in product form.');
+ });
+
+ $('#openAddCategoryModal').on('click', function(e) {
+    e.preventDefault();
+    $('#categoryForm')[0].reset();
+    $('#categoryModal').modal('show');
+ });
+
+ $('#categoryForm').on('submit', function(e) {
+    e.preventDefault();
+
+    const btn = $('#saveCategoryBtn');
+
+    $.ajax({
+      type: 'POST',
+      url: 'ajax/save_item_category.php',
+      data: $(this).serialize(),
+      dataType: 'json',
+      beforeSend: function() {
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Saving...');
+      },
+      success: function(res) {
+        if (res.status === 'success') {
+          const category = res.category || {};
+          const code = category.code || '';
+          const name = category.name || '';
+
+          if (code !== '' && $('#category option').filter(function() { return $(this).val() === code; }).length === 0) {
+            $('#category').append($('<option>', { value: code, text: name }));
+          }
+
+          $('#category').val(code);
+          $('#categoryModal').modal('hide');
+          toastr.success(res.message || 'Category saved.');
+        } else {
+          toastr.error(res.message || 'Failed to save category.');
+        }
+      },
+      error: function(xhr) {
+        console.error(xhr.responseText);
+        toastr.error(xhr.responseJSON?.message || 'Failed to save category.');
+      },
+      complete: function() {
+        btn.prop('disabled', false).html('Save Category');
+      }
+    });
  });
 
  $("#productForm").on("submit", function(e) {
