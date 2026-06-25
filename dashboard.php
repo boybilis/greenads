@@ -1127,6 +1127,7 @@ if (!isset($_SESSION['user_type']) ||
       <th>Item Name</th>
       <th>Description</th>
       <th>Color</th>
+      <th>Quantity</th>
       <th>Status</th>
       <th>Action</th>
     </tr>

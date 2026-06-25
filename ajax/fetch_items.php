@@ -16,12 +16,26 @@ if (!in_array('reorder_level', $columns, true)) {
 
 $rows = $db->getAllRecords('tbl_items');
 
+$reservedStmt = $pdo->query("
+    SELECT oi.sku, SUM(oi.qty) AS reserved_qty
+    FROM tbl_or_items oi
+    INNER JOIN tbl_or o ON o.or_id = oi.or_id
+    WHERE o.or_status = 0
+    GROUP BY oi.sku
+");
+$reservedBySku = [];
+while ($reservedRow = $reservedStmt->fetch(PDO::FETCH_ASSOC)) {
+    $reservedBySku[$reservedRow['sku']] = (float)$reservedRow['reserved_qty'];
+}
+
 $data = [];
 
 if ($rows && is_array($rows)) {
     foreach ($rows as $row) {
 
-       $qty = (int)$row['quantity'];
+       $onHand = (float)$row['quantity'];
+       $reserved = $reservedBySku[$row['sku']] ?? 0;
+       $qty = max(0, $onHand - $reserved);
        $reorderLevel = (int)($row['reorder_level'] ?? 10);
 
 if ($qty > $reorderLevel) {
@@ -33,6 +47,8 @@ if ($qty > $reorderLevel) {
 }
 
         $description = !empty($row['description']) ? $row['description'] : '-';
+        $unit = $row['unit'] ?? '';
+        $quantity = number_format($qty, 2) . ' ' . htmlspecialchars($unit);
 		
 		if ($_SESSION['user_type'] !== 'Manager') { 
 
@@ -58,6 +74,7 @@ if ($qty > $reorderLevel) {
             $row['material_name'],
             $description,
             $row['color'],
+            $quantity,
             $status,
             $action
         ];
