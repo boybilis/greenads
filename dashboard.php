@@ -4276,7 +4276,19 @@ $('#material_name, #color, #gsm').on('input blur', buildSkuPreview);
 			  cache: false, // To unable request pages to be cached
 			  processData: false, // To send DOMDocument or non processed data file it is set to false
 			  success: function(data) {
-				
+				let response = data;
+				if (typeof data === 'string' && data.trim().charAt(0) === '{') {
+				  try {
+					response = JSON.parse(data);
+				  } catch (e) {
+					response = data;
+				  }
+				}
+				if (response && typeof response === 'object' && response.status === 'error') {
+				  toastr.error(response.message || 'Unable to save item.');
+				  return;
+				}
+
 				if (data == 1 || parseInt(data) == 1) {
                     let pendingEncode = pendingEncodeAfterProductSave;
                     let generatedSku = $('#sku').val();

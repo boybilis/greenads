@@ -161,15 +161,40 @@ if($pid!=""){
 	}
 
 	if($sku!=""){
+		$skuCheckStmt = $pdo->prepare("SELECT COUNT(*) FROM tbl_items WHERE sku = ?");
+		$skuCheckStmt->execute([$sku]);
+		if ((int)$skuCheckStmt->fetchColumn() > 0) {
+			echo 3;
+			exit;
+		}
 
-		$data=array();
+		$materialName = trim((string)($_POST['material_name'] ?? ''));
+		$category = trim((string)($_POST['category'] ?? ''));
+		$color = trim((string)($_POST['color'] ?? ''));
+		$unit = trim((string)($_POST['unit'] ?? ''));
+		if ($materialName === '' || $category === '' || $color === '' || $unit === '') {
+			header('Content-Type: application/json');
+			echo json_encode([
+				'status' => 'error',
+				'message' => 'Material name, category, color, and unit are required.'
+			]);
+			exit;
+		}
 
-			foreach($_POST as $key => $value) {
-	if($value!=''){
-		$data += [$key => $value];
- 
-	}
-}
+		$data = [
+			'sku' => $sku,
+			'material_name' => $materialName,
+			'material_type' => trim((string)($_POST['material_type'] ?? '')),
+			'category' => $category,
+			'color' => $color,
+			'gsm' => trim((string)($_POST['gsm'] ?? '')),
+			'description' => trim((string)($_POST['description'] ?? '')),
+			'quantity' => max(0, (float)($_POST['quantity'] ?? 0)),
+			'unit' => $unit,
+			'unit_price' => max(0, (float)($_POST['unit_price'] ?? 0)),
+			'location' => trim((string)($_POST['location'] ?? '')),
+			'reorder_level' => max(0, (float)($_POST['reorder_level'] ?? 10))
+		];
 
         if (!$canManagePricing) {
             $data['unit_price'] = 0;

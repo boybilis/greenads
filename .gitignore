@@ -23,6 +23,7 @@ bower_components/
 /plugins/*/*.md
 /plugins/*/*.html
 /plugins/*/package.json
+/data/item_categories.json
 
 
 // Docs
