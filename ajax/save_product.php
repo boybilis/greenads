@@ -205,8 +205,18 @@ if($pid!=""){
 		if (in_array('created_at', $itemColumns, true)) {
 			$data['created_at'] = date('Y-m-d H:i:s');
 		}
-		$insert     =   $db->insert('tbl_items',$data);
-		if($insert){ audit_log($pdo, 'CREATE', 'Items', $sku, 'Added item ' . ($_POST['material_name'] ?? '') . '.'); echo 1; } else { echo 0; }
+		$insert = $db->insert('tbl_items', $data);
+		if ($insert) {
+			audit_log($pdo, 'CREATE', 'Items', $sku, 'Added item ' . ($_POST['material_name'] ?? '') . '.');
+			header('Content-Type: application/json');
+			echo json_encode([
+				'status' => 'success',
+				'message' => 'Item saved successfully.',
+				'sku' => $sku
+			]);
+		} else {
+			echo 0;
+		}
 	}else{
 		echo 2;
 	}	 

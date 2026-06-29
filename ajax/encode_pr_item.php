@@ -211,11 +211,18 @@ try {
         'message' => $remaining === 0 ? 'Item encoded. PR request is now closed.' : 'Item encoded successfully.',
         'remaining' => $remaining
     ]);
-} catch (Exception $e) {
+} catch (RuntimeException $e) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
+    error_log('encode_pr_item validation failed: ' . $e->getMessage());
+    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+} catch (Throwable $e) {
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
+    error_log('encode_pr_item failed: ' . $e->getMessage());
     http_response_code(500);
-    echo json_encode(['status' => 'error', 'message' => "Request failed."]);
+    echo json_encode(['status' => 'error', 'message' => 'Unable to encode the PO item. Please try again.']);
 }
 ?>

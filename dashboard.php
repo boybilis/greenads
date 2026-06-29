@@ -4289,14 +4289,15 @@ $('#material_name, #color, #gsm').on('input blur', buildSkuPreview);
 				  return;
 				}
 
-				if (data == 1 || parseInt(data) == 1) {
+				const saveSucceeded = data == 1 || parseInt(data) == 1 || (response && typeof response === 'object' && response.status === 'success');
+				if (saveSucceeded) {
                     let pendingEncode = pendingEncodeAfterProductSave;
-                    let generatedSku = $('#sku').val();
+                    let generatedSku = (response && typeof response === 'object' && response.sku) ? response.sku : $('#sku').val();
                     pendingEncodeAfterProductSave = null;
                 $('#productForm')[0].reset();
 					 $('#id').val('');
 					$('#productModal').modal('hide');
-				  toastr.success("Saved successfully!");
+				  toastr.success((response && response.message) || "Saved successfully!");
 				  
 				stocktable.ajax.reload(null, false);
 				inventorytable.ajax.reload(null, false);
@@ -6547,7 +6548,7 @@ $(document).on('click', '.encode-pr-request', function(e) {
                 '<td>' + encodeModalEscape(item.item_name) + '</td>' +
                 '<td class="text-right">' + formatPoQty(item.po_qty) + '</td>' +
                 '<td>' + encodeModalEscape(item.unit || '') + '</td>' +
-                '<td>' + (encoded ? '<span class="badge badge-success">Encoded</span>' : '<a href="#" class="encode-pr-item"><span class="badge badge-warning">Encode</span></a>') + '</td>' +
+                '<td>' + (encoded ? '<span class="badge badge-success">PO Encoded</span>' : '<a href="#" class="encode-pr-item"><span class="badge badge-warning">Encode</span></a>') + '</td>' +
                 '</tr>';
         });
 
@@ -6617,7 +6618,7 @@ $(document).on('click', '.encode-pr-item', function(e) {
         success: function(res) {
             if (res.status === 'success') {
                 toastr.success(res.message);
-                row.find('td:last').html('<span class="badge badge-success">Encoded</span>');
+                row.find('td:last').html('<span class="badge badge-success">PO Encoded</span>');
                 stocktable.ajax.reload(null, false);
                 inventorytable.ajax.reload(null, false);
                 invInHistoryTable.ajax.reload(null, false);
@@ -6637,7 +6638,7 @@ $(document).on('click', '.encode-pr-item', function(e) {
         },
         error: function(xhr) {
             console.error(xhr.responseText);
-            toastr.error('Failed to encode item.');
+            toastr.error(xhr.responseJSON?.message || 'Failed to encode item.');
             row.find('td:last').html('<a href="#" class="encode-pr-item"><span class="badge badge-warning">Encode</span></a>');
         }
     });

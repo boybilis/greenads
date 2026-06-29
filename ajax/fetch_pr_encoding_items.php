@@ -28,6 +28,25 @@ if ($prId <= 0 && $poId <= 0) {
 }
 
 try {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS tbl_inventory_in (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        sku VARCHAR(100) NOT NULL,
+        item_name VARCHAR(255) NOT NULL,
+        quantity DECIMAL(12,2) NOT NULL,
+        unit VARCHAR(50) NOT NULL,
+        unit_price DECIMAL(12,2) NOT NULL,
+        stock_before DECIMAL(12,2) NOT NULL DEFAULT 0,
+        stock_after DECIMAL(12,2) NOT NULL DEFAULT 0,
+        receipt_no VARCHAR(100) NOT NULL,
+        receipt_date DATE NOT NULL,
+        po_code VARCHAR(100) DEFAULT NULL,
+        created_by VARCHAR(100) DEFAULT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_inventory_in_sku (sku),
+        INDEX idx_inventory_in_receipt_no (receipt_no),
+        INDEX idx_inventory_in_po_code (po_code)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS tbl_purchase_order_prs (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -98,14 +117,26 @@ try {
             poi.color,
             poi.po_qty,
             poi.unit,
-            COALESCE(poi.unit_price, 0) AS unit_price
+            COALESCE(poi.unit_price, 0) AS unit_price,
+            CASE WHEN EXISTS (
+                SELECT 1
+                FROM tbl_inventory_in ii
+                WHERE ii.sku = poi.sku
+                  AND ii.receipt_no = ?
+                  AND ii.po_code = ?
+            ) THEN 1 ELSE 0 END AS encoded
         FROM tbl_purchase_order_items poi
         INNER JOIN tbl_purchase_request_items pri ON pri.pr_item_id = poi.pr_item_id
         WHERE poi.po_id = ?
           AND pri.pr_id = ?
         ORDER BY poi.item_name ASC, poi.sku ASC
     ");
-    $itemStmt->execute([(int)$header['po_id'], (int)$header['pr_id']]);
+    $itemStmt->execute([
+        $header['receipt_no'],
+        $header['po_ref_no'],
+        (int)$header['po_id'],
+        (int)$header['pr_id']
+    ]);
     $items = $itemStmt->fetchAll(PDO::FETCH_ASSOC);
 
     echo json_encode([
@@ -130,7 +161,7 @@ try {
                 'unit' => $item['unit'],
                 'unit_price' => (float)$item['unit_price'],
                 'item_exists' => stripos((string)$item['sku'], 'REQ') !== 0,
-                'encoded' => false
+                'encoded' => (int)($item['encoded'] ?? 0) === 1
             ];
         }, $items)
     ]);
