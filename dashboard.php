@@ -3101,203 +3101,238 @@ $(document).ready(function() {
 		});
 	}
 	
- stocktable = $('#stock-list').DataTable({
-        ajax: 'ajax/fetch_items.php',
-        responsive: true,
-        autoWidth: false
-    });
-	
-	if ($('#items-po').length) {
-	itemspo = $('#items-po').DataTable({
-        ajax: 'ajax/fetch_not_on_list.php',
-        responsive: true,
-        autoWidth: false
-    });
-    }
-	
-	
-	
-	inventorytable = $('#inventory-list').DataTable({
-        ajax: 'ajax/fetch_items_inventory.php',
-        responsive: true,
-        autoWidth: false
-    });
-
-	invInHistoryTable = $('#inv-in-history').DataTable({
-        ajax: 'ajax/fetch_inventory_in_history.php',
-        responsive: true,
-        autoWidth: false,
-        order: [[0, 'desc']]
-    });
-
-	invOutHistoryTable = $('#inv-out-history').DataTable({
-        ajax: 'ajax/fetch_inventory_out_history.php',
-        responsive: true,
-        autoWidth: false,
-        order: [[0, 'desc']]
-    });
-
-	if ($('#inventory-monthly-summary').length) {
-	inventoryMonthlySummaryTable = $('#inventory-monthly-summary').DataTable({
-        ajax: {
-            url: 'ajax/fetch_inventory_monthly_summary.php',
-            type: 'GET',
-            data: function(d) {
-                d.month = $('#inventoryReportMonth').val();
-                d.year = $('#inventoryReportYear').val();
-            },
-            dataSrc: function(json) {
-                const totalValue = json.summary?.grand_total_price || json.summary?.total_value || '0.00';
-                $('#inventoryMonthlyTotalValue').text(totalValue);
-                $('#inventoryMonthlyTotalValueFooter').text(totalValue);
-                return json.data || [];
-            }
-        },
-        responsive: true,
-        autoWidth: false,
-        columns: [
-            { data: 'sku' },
-            { data: 'item_name' },
-            { data: 'beginning_inventory' },
-            { data: 'in_qty' },
-            { data: 'out_qty' },
-            { data: 'remaining_inventory' },
-            { data: 'unit_price' },
-            { data: 'total_price' }
-        ]
-    });
+    function reloadDataTable(table, resetPaging = false) {
+        if (table && table.ajax) {
+            table.ajax.reload(null, resetPaging);
+        }
     }
 
-    inventoryPurchaseRequestTable = $('#inventory-pr-list').DataTable({
-        ajax: 'ajax/fetch_my_purchase_requests.php',
-        responsive: true,
-        autoWidth: false,
-        order: [[0, 'desc']],
-        columns: [
-            { data: 'pr_ref_no' },
-            { data: 'request_date' },
-            { data: 'proj_code' },
-            { data: 'requested_by' },
-            { data: 'item_count' },
-            { data: 'total_qty' },
-            { data: 'status_badge' },
-            { data: 'action' }
-        ]
-    });
+    function initProductSection() {
+        if (!stocktable && $('#stock-list').length) {
+            stocktable = $('#stock-list').DataTable({
+                ajax: 'ajax/fetch_items.php',
+                responsive: true,
+                autoWidth: false
+            });
+        }
 
-	projectMrReportTable = $('#project-mr-report').DataTable({
-        ajax: {
-            url: 'ajax/fetch_project_mr_report.php',
-            type: 'GET',
-            data: function(d) {
-                d.proj_code = $('#report_proj_code').val();
-            },
-            dataSrc: function(json) {
-                let summary = json.summary || {};
-                $('#report_mr_count').text(summary.count || 0);
-                $('#report_grand_total').text(summary.grand_total || '0.00');
-                return json.data || [];
-            }
-        },
-        responsive: true,
-        autoWidth: false,
-        ordering: true,
-        columns: [
-            { data: 'or_no' },
-            { data: 'or_date' },
-            { data: 'proj_code' },
-            { data: 'dept_code' },
-            { data: 'prepared_by' },
-            { data: 'remarks' },
-            { data: 'grand_total' }
-        ]
-    });
+        if (!itemspo && $('#items-po').length) {
+            itemspo = $('#items-po').DataTable({
+                ajax: 'ajax/fetch_not_on_list.php',
+                responsive: true,
+                autoWidth: false
+            });
+        }
+    }
+
+    function initInventorySection() {
+        if (!inventorytable && $('#inventory-list').length) {
+            inventorytable = $('#inventory-list').DataTable({
+                ajax: 'ajax/fetch_items_inventory.php',
+                responsive: true,
+                autoWidth: false
+            });
+        }
+
+        if (!invInHistoryTable && $('#inv-in-history').length) {
+            invInHistoryTable = $('#inv-in-history').DataTable({
+                ajax: 'ajax/fetch_inventory_in_history.php',
+                responsive: true,
+                autoWidth: false,
+                order: [[0, 'desc']]
+            });
+        }
+
+        if (!invOutHistoryTable && $('#inv-out-history').length) {
+            invOutHistoryTable = $('#inv-out-history').DataTable({
+                ajax: 'ajax/fetch_inventory_out_history.php',
+                responsive: true,
+                autoWidth: false,
+                order: [[0, 'desc']]
+            });
+        }
+
+        if (!inventoryPurchaseRequestTable && $('#inventory-pr-list').length) {
+            inventoryPurchaseRequestTable = $('#inventory-pr-list').DataTable({
+                ajax: 'ajax/fetch_my_purchase_requests.php',
+                responsive: true,
+                autoWidth: false,
+                order: [[0, 'desc']],
+                columns: [
+                    { data: 'pr_ref_no' },
+                    { data: 'request_date' },
+                    { data: 'proj_code' },
+                    { data: 'requested_by' },
+                    { data: 'item_count' },
+                    { data: 'total_qty' },
+                    { data: 'status_badge' },
+                    { data: 'action' }
+                ]
+            });
+        }
+    }
+
+    function initInventoryReportSection() {
+        if (!inventoryMonthlySummaryTable && $('#inventory-monthly-summary').length) {
+            inventoryMonthlySummaryTable = $('#inventory-monthly-summary').DataTable({
+                ajax: {
+                    url: 'ajax/fetch_inventory_monthly_summary.php',
+                    type: 'GET',
+                    data: function(d) {
+                        d.month = $('#inventoryReportMonth').val();
+                        d.year = $('#inventoryReportYear').val();
+                    },
+                    dataSrc: function(json) {
+                        const totalValue = json.summary?.grand_total_price || json.summary?.total_value || '0.00';
+                        $('#inventoryMonthlyTotalValue').text(totalValue);
+                        $('#inventoryMonthlyTotalValueFooter').text(totalValue);
+                        return json.data || [];
+                    }
+                },
+                responsive: true,
+                autoWidth: false,
+                columns: [
+                    { data: 'sku' },
+                    { data: 'item_name' },
+                    { data: 'beginning_inventory' },
+                    { data: 'in_qty' },
+                    { data: 'out_qty' },
+                    { data: 'remaining_inventory' },
+                    { data: 'unit_price' },
+                    { data: 'total_price' }
+                ]
+            });
+        }
+    }
+
+    function initReportSection() {
+        if (!projectMrReportTable && $('#project-mr-report').length) {
+            projectMrReportTable = $('#project-mr-report').DataTable({
+                ajax: {
+                    url: 'ajax/fetch_project_mr_report.php',
+                    type: 'GET',
+                    data: function(d) {
+                        d.proj_code = $('#report_proj_code').val();
+                    },
+                    dataSrc: function(json) {
+                        let summary = json.summary || {};
+                        $('#report_mr_count').text(summary.count || 0);
+                        $('#report_grand_total').text(summary.grand_total || '0.00');
+                        return json.data || [];
+                    }
+                },
+                responsive: true,
+                autoWidth: false,
+                ordering: true,
+                columns: [
+                    { data: 'or_no' },
+                    { data: 'or_date' },
+                    { data: 'proj_code' },
+                    { data: 'dept_code' },
+                    { data: 'prepared_by' },
+                    { data: 'remarks' },
+                    { data: 'grand_total' }
+                ]
+            });
+        }
+    }
+
+    function initPurchasingSection() {
+        if (!supplierTable && $('#supplier-list').length) {
+            supplierTable = $('#supplier-list').DataTable({
+                ajax: 'ajax/fetch_suppliers.php',
+                responsive: true,
+                autoWidth: false,
+                columns: [
+                    { data: 'supplier_name_display' },
+                    { data: 'supplier_owner_display' },
+                    { data: 'contact_no_display' },
+                    { data: 'email_display' },
+                    { data: 'action' }
+                ]
+            });
+        }
+
+        if (!purchaseRequestTable && $('#purchase-request-list').length) {
+            purchaseRequestTable = $('#purchase-request-list').DataTable({
+                ajax: 'ajax/fetch_purchase_requests.php',
+                responsive: true,
+                autoWidth: false,
+                order: [[0, 'desc']],
+                columns: [
+                    { data: 'select_po', orderable: false, searchable: false },
+                    { data: 'pr_ref_no' },
+                    { data: 'request_date' },
+                    { data: 'requested_by' },
+                    { data: 'item_count' },
+                    { data: 'total_qty' },
+                    { data: 'status_badge' },
+                    { data: 'action' }
+                ]
+            });
+        }
+
+        if (!purchaseOrderTable && $('#purchase-order-list').length) {
+            purchaseOrderTable = $('#purchase-order-list').DataTable({
+                ajax: 'ajax/fetch_purchase_orders.php',
+                responsive: true,
+                autoWidth: false,
+                order: [[0, 'desc']],
+                columns: [
+                    { data: 'po_ref_no' },
+                    { data: 'pr_ref_no' },
+                    { data: 'po_date' },
+                    { data: 'supplier_name' },
+                    { data: 'item_count' },
+                    { data: 'total_po_qty' },
+                    { data: 'fulfillment_status' },
+                    { data: 'receipt_no' },
+                    { data: 'date_received' },
+                    { data: 'created_by' },
+                    { data: 'action' }
+                ]
+            });
+        }
+    }
+
+    function initSettingSection() {
+        if (!userTable && $('#user-list').length) {
+            userTable = $('#user-list').DataTable({
+                ajax: 'ajax/fetch_users.php',
+                responsive: true,
+                autoWidth: false,
+                columns: [
+                    { data: 'user_code_display' },
+                    { data: 'user_name_display' },
+                    { data: 'user_type_display' },
+                    { data: 'user_dept_display' },
+                    { data: 'action' }
+                ]
+            });
+        }
+
+        if (!auditLogTable && $('#audit-log-list').length) {
+            auditLogTable = $('#audit-log-list').DataTable({
+                ajax: 'ajax/fetch_audit_logs.php',
+                responsive: true,
+                autoWidth: false,
+                order: [[0, 'desc']],
+                columns: [
+                    { data: 'created_at' },
+                    { data: 'user' },
+                    { data: 'user_type' },
+                    { data: 'action' },
+                    { data: 'module' },
+                    { data: 'reference_no' },
+                    { data: 'description' }
+                ]
+            });
+        }
+    }
 
 	$('#report_proj_code').on('change', function() {
-        projectMrReportTable.ajax.reload();
-    });
-
-	supplierTable = $('#supplier-list').DataTable({
-        ajax: 'ajax/fetch_suppliers.php',
-        responsive: true,
-        autoWidth: false,
-        columns: [
-            { data: 'supplier_name_display' },
-            { data: 'supplier_owner_display' },
-            { data: 'contact_no_display' },
-            { data: 'email_display' },
-            { data: 'action' }
-        ]
-    });
-
-    if ($('#user-list').length) {
-        userTable = $('#user-list').DataTable({
-            ajax: 'ajax/fetch_users.php',
-            responsive: true,
-            autoWidth: false,
-            columns: [
-                { data: 'user_code_display' },
-                { data: 'user_name_display' },
-                { data: 'user_type_display' },
-                { data: 'user_dept_display' },
-                { data: 'action' }
-            ]
-        });
-    }
-
-    if ($('#audit-log-list').length) {
-        auditLogTable = $('#audit-log-list').DataTable({
-            ajax: 'ajax/fetch_audit_logs.php',
-            responsive: true,
-            autoWidth: false,
-            order: [[0, 'desc']],
-            columns: [
-                { data: 'created_at' },
-                { data: 'user' },
-                { data: 'user_type' },
-                { data: 'action' },
-                { data: 'module' },
-                { data: 'reference_no' },
-                { data: 'description' }
-            ]
-        });
-    }
-
-	purchaseRequestTable = $('#purchase-request-list').DataTable({
-        ajax: 'ajax/fetch_purchase_requests.php',
-        responsive: true,
-        autoWidth: false,
-        order: [[0, 'desc']],
-        columns: [
-            { data: 'select_po', orderable: false, searchable: false },
-            { data: 'pr_ref_no' },
-            { data: 'request_date' },
-            { data: 'requested_by' },
-            { data: 'item_count' },
-            { data: 'total_qty' },
-            { data: 'status_badge' },
-            { data: 'action' }
-        ]
-    });
-
-	purchaseOrderTable = $('#purchase-order-list').DataTable({
-        ajax: 'ajax/fetch_purchase_orders.php',
-        responsive: true,
-        autoWidth: false,
-        order: [[0, 'desc']],
-        columns: [
-            { data: 'po_ref_no' },
-            { data: 'pr_ref_no' },
-            { data: 'po_date' },
-            { data: 'supplier_name' },
-            { data: 'item_count' },
-            { data: 'total_po_qty' },
-            { data: 'fulfillment_status' },
-            { data: 'receipt_no' },
-            { data: 'date_received' },
-            { data: 'created_by' },
-            { data: 'action' }
-        ]
+        initReportSection();
+        reloadDataTable(projectMrReportTable);
     });
 
 	let inventoryInItems = [];
@@ -3347,11 +3382,11 @@ $(document).ready(function() {
 		return inventoryItemsRequest;
 	}
 
-	loadInventoryInItems();
-
 	$(window).on('focus', function() {
 		if (Date.now() - inventoryItemsLoadedAt > (5 * 60000)) {
-			loadInventoryInItems(true);
+			if (!$('#inventory').hasClass('d-none')) {
+				loadInventoryInItems(true);
+			}
 		}
 	});
 
@@ -3516,9 +3551,9 @@ $(document).ready(function() {
 					$('#inventoryInModal').modal('hide');
 					$('#inventoryInForm')[0].reset();
 					loadInventoryInItems(true);
-					stocktable.ajax.reload(null, false);
-					inventorytable.ajax.reload(null, false);
-					invInHistoryTable.ajax.reload(null, false);
+					reloadDataTable(stocktable);
+					reloadDataTable(inventorytable);
+					reloadDataTable(invInHistoryTable);
 				} else {
 					toastr.error(res.message);
 				}
@@ -3565,9 +3600,9 @@ $(document).ready(function() {
 					$('#inventoryOutModal').modal('hide');
 					$('#inventoryOutForm')[0].reset();
 					loadInventoryInItems(true);
-					stocktable.ajax.reload(null, false);
-					inventorytable.ajax.reload(null, false);
-					invOutHistoryTable.ajax.reload(null, false);
+					reloadDataTable(stocktable);
+					reloadDataTable(inventorytable);
+					reloadDataTable(invOutHistoryTable);
 				} else {
 					toastr.error(res.message);
 				}
@@ -3590,209 +3625,240 @@ $(document).ready(function() {
 			$('.inv-out-item-dropdown').hide();
 		}
 	});
-	//project list
-	projecttable = $('#project-list').DataTable({
-
-    ajax: {
-        url: 'ajax/fetch_projects.php',
-        type: 'GET',
-        dataSrc: function (json) {
-            const rows = Array.isArray(json) ? json : [];
-            const pendingCount = rows.filter(function (r) {
-                return parseInt(r.proj_approval_status, 10) !== 1;
-            }).length;
-            const $counter = $('#projectApprovalCounter');
-            if (pendingCount > 0) {
-                $counter.text(pendingCount + ' Pending Approval').removeClass('d-none');
-            } else {
-                $counter.addClass('d-none');
-            }
-            return rows;
-        }
-    },
-
-    columns: [
-
-       
-        { data: 'proj_code' },
-        { data: 'proj_name' },
-        { data: 'proj_mgr' },
-        { data: 'proj_owner' },
-        {
-            data: 'proj_cost',
-            render: function (data) {
-                return '₱ ' + parseFloat(data).toLocaleString('en-PH', {
-                    minimumFractionDigits: 2
-                });
-            }
-        },
-
-        // =========================
-        // DESCRIPTION (TRIMMED)
-        // =========================
-        {
-            data: 'proj_desc',
-            render: function (data) {
-                if (!data) return '';
-                return data.length > 60
-                    ? data.substring(0, 60) + '...'
-                    : data;
-            }
-        },
-
-        // =========================
-        // START DATE
-        // =========================
-        { data: 'proj_sd' },
-
-        // =========================
-        // END DATE
-        // =========================
-        { data: 'proj_ed' },
-
-        // =========================
-        // APPROVAL STATUS
-        // =========================
-        {
-            data: 'proj_approval_status',
-            render: function (data) {
-                if (parseInt(data, 10) === 1) {
-                    return '<span class="badge bg-success">Approved</span>';
-                }
-                return '<span class="badge bg-warning text-dark">Pending Admin Approval</span>';
-            }
-        },
-
-        // =========================
-        // STATUS (0 = Ongoing, 1 = Completed)
-        // =========================
-        {
-            data: 'proj_status',
-            render: function (data) {
-
-                if (data == 0) {
-                    return '<span class="badge bg-warning">Ongoing</span>';
-                }
-
-                if (data == 1) {
-                    return '<span class="badge bg-success">Completed</span>';
-                }
-
-                return '<span class="badge bg-secondary">Unknown</span>';
-            }
-        },
-
-        // =========================
-        // ATTACHMENTS (FILE COUNT)
-        // =========================
-        {
-            data: 'file_count',
-            render: function (data) {
-
-                if (data > 0) {
-                    return `<span class="badge bg-info">${data} file(s)</span>`;
-                }
-
-                return '<span class="text-muted">No files</span>';
-            }
-        },
-
-        // =========================
-        // ACTION BUTTONS
-        // =========================
-        {
-            data: null,
-            orderable: false,
-            render: function (data) {
-                const isAdmin = "<?= $_SESSION['user_type'] ?? '' ?>" === 'Admin';
-                const isManager = "<?= $_SESSION['user_type'] ?? '' ?>" === 'Manager';
-                const currentUserCode = "<?= $_SESSION['user_code'] ?? '' ?>";
-                const pendingApproval = parseInt(data.proj_approval_status, 10) !== 1;
-
-                let actions = '';
-                if (isAdmin && pendingApproval) {
-                    actions += `<button class="btn btn-sm btn-warning approve-project-btn mr-1" data-id="${data.proj_code}">Approve</button>`;
-                }
-                if (isManager && pendingApproval && data.proj_mgr === currentUserCode) {
-                    actions += `<button class="btn btn-sm btn-secondary edit-project-btn mr-1" data-id="${data.proj_code}">Edit</button>`;
-                }
-
-                actions += `
-                    <button class="btn btn-sm btn-primary view-btn" data-id="${data.proj_code}">
-                        View
-                    </button>
-
-                    <button class="btn btn-sm btn-success upload-btn" data-id="${data.proj_code}">
-                        Upload
-                    </button>
-					 <button class="btn btn-sm btn-info qr-btn" data-token="${data.public_token}" data-name="${data.proj_name}">
-                        QR-Code
-                    </button>
-                `;
-
-                return actions;
-            }
-        }
-    ],
-
-    // =========================
-    // ROW COLOR BY STATUS
-    // =========================
-    rowCallback: function (row, data) {
-        $(row).removeClass('table-warning table-success pending-approval-row');
-
-        if (parseInt(data.proj_approval_status, 10) !== 1) {
-            $(row).addClass('pending-approval-row');
+	function initProjectSection() {
+        if (projecttable || !$('#project-list').length) {
             return;
         }
 
-        if (data.proj_status == 0) {
-            $(row).addClass('table-warning'); // Ongoing
+        projecttable = $('#project-list').DataTable({
+            ajax: {
+                url: 'ajax/fetch_projects.php',
+                type: 'GET',
+                dataSrc: function (json) {
+                    const rows = Array.isArray(json) ? json : [];
+                    const pendingCount = rows.filter(function (r) {
+                        return parseInt(r.proj_approval_status, 10) !== 1;
+                    }).length;
+                    const $counter = $('#projectApprovalCounter');
+                    if (pendingCount > 0) {
+                        $counter.text(pendingCount + ' Pending Approval').removeClass('d-none');
+                    } else {
+                        $counter.addClass('d-none');
+                    }
+                    return rows;
+                }
+            },
+            columns: [
+                { data: 'proj_code' },
+                { data: 'proj_name' },
+                { data: 'proj_mgr' },
+                { data: 'proj_owner' },
+                {
+                    data: 'proj_cost',
+                    render: function (data) {
+                        return 'PHP ' + parseFloat(data).toLocaleString('en-PH', {
+                            minimumFractionDigits: 2
+                        });
+                    }
+                },
+                {
+                    data: 'proj_desc',
+                    render: function (data) {
+                        if (!data) return '';
+                        return data.length > 60 ? data.substring(0, 60) + '...' : data;
+                    }
+                },
+                { data: 'proj_sd' },
+                { data: 'proj_ed' },
+                {
+                    data: 'proj_approval_status',
+                    render: function (data) {
+                        if (parseInt(data, 10) === 1) {
+                            return '<span class="badge bg-success">Approved</span>';
+                        }
+                        return '<span class="badge bg-warning text-dark">Pending Admin Approval</span>';
+                    }
+                },
+                {
+                    data: 'proj_status',
+                    render: function (data) {
+                        if (data == 0) {
+                            return '<span class="badge bg-warning">Ongoing</span>';
+                        }
+                        if (data == 1) {
+                            return '<span class="badge bg-success">Completed</span>';
+                        }
+                        return '<span class="badge bg-secondary">Unknown</span>';
+                    }
+                },
+                {
+                    data: 'file_count',
+                    render: function (data) {
+                        if (data > 0) {
+                            return `<span class="badge bg-info">${data} file(s)</span>`;
+                        }
+                        return '<span class="text-muted">No files</span>';
+                    }
+                },
+                {
+                    data: null,
+                    orderable: false,
+                    render: function (data) {
+                        const isAdmin = "<?= $_SESSION['user_type'] ?? '' ?>" === 'Admin';
+                        const isManager = "<?= $_SESSION['user_type'] ?? '' ?>" === 'Manager';
+                        const currentUserCode = "<?= $_SESSION['user_code'] ?? '' ?>";
+                        const pendingApproval = parseInt(data.proj_approval_status, 10) !== 1;
+
+                        let actions = '';
+                        if (isAdmin && pendingApproval) {
+                            actions += `<button class="btn btn-sm btn-warning approve-project-btn mr-1" data-id="${data.proj_code}">Approve</button>`;
+                        }
+                        if (isManager && pendingApproval && data.proj_mgr === currentUserCode) {
+                            actions += `<button class="btn btn-sm btn-secondary edit-project-btn mr-1" data-id="${data.proj_code}">Edit</button>`;
+                        }
+
+                        actions += `
+                            <button class="btn btn-sm btn-primary view-btn" data-id="${data.proj_code}">
+                                View
+                            </button>
+
+                            <button class="btn btn-sm btn-success upload-btn" data-id="${data.proj_code}">
+                                Upload
+                            </button>
+                            <button class="btn btn-sm btn-info qr-btn" data-token="${data.public_token}" data-name="${data.proj_name}">
+                                QR-Code
+                            </button>
+                        `;
+
+                        return actions;
+                    }
+                }
+            ],
+            rowCallback: function (row, data) {
+                $(row).removeClass('table-warning table-success pending-approval-row');
+
+                if (parseInt(data.proj_approval_status, 10) !== 1) {
+                    $(row).addClass('pending-approval-row');
+                    return;
+                }
+
+                if (data.proj_status == 0) {
+                    $(row).addClass('table-warning');
+                }
+
+                if (data.proj_status == 1) {
+                    $(row).addClass('table-success');
+                }
+            }
+        });
+    }
+
+    function initOrderSection() {
+        if (!ortable && $('#or-list').length) {
+            ortable = $('#or-list').DataTable({
+                ajax:'ajax/fetch_or.php',
+                responsive: true,
+                autoWidth: false,
+                ordering: true,
+                columns: [
+                    { data: 'or_no' },
+                    { data: 'or_date' },
+                    { data: 'dept_code' },
+                    { data: 'proj_code' },
+                    { data: 'prepared_by' },
+                    { data: 'grand_total' },
+                    { data: 'status_badge' },
+                    { data: 'action' }
+                ]
+            });
         }
 
-        if (data.proj_status == 1) {
-            $(row).addClass('table-success'); // Completed
+        if (!myGeneratedPrTable && $('#my-generated-pr-list').length) {
+            myGeneratedPrTable = $('#my-generated-pr-list').DataTable({
+                ajax: 'ajax/fetch_my_purchase_requests.php?mine=1',
+                responsive: true,
+                autoWidth: false,
+                order: [[0, 'desc']],
+                columns: [
+                    { data: 'pr_ref_no' },
+                    { data: 'request_date' },
+                    { data: 'proj_code' },
+                    { data: 'requested_by' },
+                    { data: 'item_count' },
+                    { data: 'total_qty' },
+                    { data: 'status_badge' },
+                    { data: 'action' }
+                ]
+            });
         }
     }
-});
 
-// end project list
-	//------------order list
-  ortable = $('#or-list').DataTable({
-    ajax:'ajax/fetch_or.php',
-    responsive: true,
-    autoWidth: false,
-    ordering: true,
-    columns: [
-      { data: 'or_no' },
-      { data: 'or_date' },
-      { data: 'dept_code' },
-      { data: 'proj_code' },
-      { data: 'prepared_by' },
-      { data: 'grand_total' },
-      { data: 'status_badge' },
-      { data: 'action' }
-    ]
-  });
+    function loadDashboardSection(target, refresh = false) {
+        switch (target) {
+            case 'project':
+                initProjectSection();
+                if (refresh) reloadDataTable(projecttable);
+                break;
+            case 'product':
+                initProductSection();
+                if (refresh) {
+                    reloadDataTable(stocktable);
+                    reloadDataTable(itemspo);
+                }
+                break;
+            case 'order':
+                initOrderSection();
+                if (refresh) {
+                    reloadDataTable(ortable);
+                    reloadDataTable(myGeneratedPrTable);
+                }
+                $(document).trigger('material-request-section-opened');
+                break;
+            case 'inventory':
+                initInventorySection();
+                if (refresh) {
+                    reloadDataTable(inventorytable);
+                    reloadDataTable(invInHistoryTable);
+                    reloadDataTable(invOutHistoryTable);
+                    reloadDataTable(inventoryPurchaseRequestTable);
+                }
+                break;
+            case 'purchasing':
+                initPurchasingSection();
+                if (refresh) {
+                    reloadDataTable(supplierTable);
+                    reloadDataTable(purchaseRequestTable);
+                    reloadDataTable(purchaseOrderTable);
+                }
+                break;
+            case 'report':
+                initReportSection();
+                if (refresh) reloadDataTable(projectMrReportTable);
+                break;
+            case 'inventory_report':
+                initInventoryReportSection();
+                if (refresh) reloadDataTable(inventoryMonthlySummaryTable);
+                break;
+            case 'setting':
+                initSettingSection();
+                if (refresh) {
+                    reloadDataTable(userTable);
+                    reloadDataTable(auditLogTable);
+                }
+                break;
+        }
+    }
 
-  if ($('#my-generated-pr-list').length) {
-    myGeneratedPrTable = $('#my-generated-pr-list').DataTable({
-      ajax: 'ajax/fetch_my_purchase_requests.php?mine=1',
-      responsive: true,
-      autoWidth: false,
-      order: [[0, 'desc']],
-      columns: [
-        { data: 'pr_ref_no' },
-        { data: 'request_date' },
-        { data: 'proj_code' },
-        { data: 'requested_by' },
-        { data: 'item_count' },
-        { data: 'total_qty' },
-        { data: 'status_badge' },
-        { data: 'action' }
-      ]
-    });
-  }
+    window.reloadDataTable = reloadDataTable;
+    window.loadDashboardSection = loadDashboardSection;
+    window.initProjectSection = initProjectSection;
+    window.initProductSection = initProductSection;
+    window.initOrderSection = initOrderSection;
+    window.initInventorySection = initInventorySection;
+    window.initInventoryReportSection = initInventoryReportSection;
+    window.initReportSection = initReportSection;
+    window.initPurchasingSection = initPurchasingSection;
+    window.initSettingSection = initSettingSection;
   
   //----------------------------
  
@@ -3812,9 +3878,10 @@ $(document).ready(function() {
 
     $('#' + defaultSection).removeClass('d-none');
     $('#side-menu .nav-link[data-target="' + defaultSection + '"]').addClass('active');
+    loadDashboardSection(defaultSection);
 
 
-    $('#side-menu .nav-link').on('click', function(e) {
+    $('a.nav-link[data-target]').on('click', function(e) {
         e.preventDefault();
 
         let target = $(this).data('target');
@@ -3828,32 +3895,17 @@ $(document).ready(function() {
         // Remove active from all links
         $('#side-menu .nav-link').removeClass('active');
 
-        // Add active to clicked
-        $(this).addClass('active');
+        // Add active to matching sidebar link
+        $('#side-menu .nav-link[data-target="' + target + '"]').addClass('active');
 
         // Show selected section
         $('#' + target).removeClass('d-none');
-
-        if (target === 'order') {
-            if (ortable) {
-                ortable.ajax.reload(null, false);
-            }
-            if (myGeneratedPrTable) {
-                myGeneratedPrTable.ajax.reload(null, false);
-            }
-            $(document).trigger('material-request-section-opened');
-        }
-        if (target === 'inventory_report') {
-            if (inventoryMonthlySummaryTable) {
-                inventoryMonthlySummaryTable.ajax.reload(null, false);
-            }
-        }
+        loadDashboardSection(target, true);
     });
 
     $('#reloadInventoryMonthlyReport, #inventoryReportMonth, #inventoryReportYear').on('click change', function() {
-        if (inventoryMonthlySummaryTable) {
-            inventoryMonthlySummaryTable.ajax.reload();
-        }
+        initInventoryReportSection();
+        reloadDataTable(inventoryMonthlySummaryTable, true);
     });
 
 });
@@ -4114,8 +4166,8 @@ $('#material_name, #color, #gsm').on('input blur', buildSkuPreview);
 					$('#productModal').modal('hide');
 				  toastr.success((response && response.message) || "Saved successfully!");
 				  
-				stocktable.ajax.reload(null, false);
-				inventorytable.ajax.reload(null, false);
+				reloadDataTable(stocktable);
+				reloadDataTable(inventorytable);
                 if (pendingEncode && generatedSku) {
                     if (encodePrItemsCache[pendingEncode.poItemId]) {
                         encodePrItemsCache[pendingEncode.poItemId].item_exists = true;
@@ -4209,10 +4261,10 @@ $('#material_name, #color, #gsm').on('input blur', buildSkuPreview);
                 if (res.status === 'success') {
                     toastr.success(res.message || 'Item deleted.');
                     if (stocktable) {
-                        stocktable.ajax.reload(null, false);
+                        reloadDataTable(stocktable);
                     }
                     if (inventorytable) {
-                        inventorytable.ajax.reload(null, false);
+                        reloadDataTable(inventorytable);
                     }
                 } else {
                     toastr.error(res.message || 'Unable to delete item.');
@@ -4595,15 +4647,15 @@ $("#orForm").on("submit", function(e) {
          $("#orForm")[0].reset();
         $("#orItemsTable tbody").html("");
         $("#grandTotal").val("0.00");
-		ortable.ajax.reload(null, false);
+		reloadDataTable(ortable);
         if (purchaseRequestTable) {
-          purchaseRequestTable.ajax.reload(null, false);
+          reloadDataTable(purchaseRequestTable);
         }
         if (inventoryPurchaseRequestTable) {
-          inventoryPurchaseRequestTable.ajax.reload(null, false);
+          reloadDataTable(inventoryPurchaseRequestTable);
         }
         if (myGeneratedPrTable) {
-          myGeneratedPrTable.ajax.reload(null, false);
+          reloadDataTable(myGeneratedPrTable);
         }
 
       } else {
@@ -4656,10 +4708,10 @@ $(document).on("click", "#approveOrBtn", function(e) {
         $("#orForm select").prop("disabled", false);
         $("#addItemRow").show();
         $("#saveorBtn").show().html('<i class="fas fa-save"></i> Save MR');
-        ortable.ajax.reload(null, false);
-        stocktable.ajax.reload(null, false);
-        inventorytable.ajax.reload(null, false);
-        invOutHistoryTable.ajax.reload(null, false);
+        reloadDataTable(ortable);
+        reloadDataTable(stocktable);
+        reloadDataTable(inventorytable);
+        reloadDataTable(invOutHistoryTable);
       } else {
         toastr.error(res.message);
       }
@@ -4691,7 +4743,7 @@ $(document).on("click", ".claim-or", function(e) {
     success: function(res) {
       if (res.status === "success") {
         toastr.success(res.message);
-        ortable.ajax.reload(null, false);
+        reloadDataTable(ortable);
       } else {
         toastr.error(res.message || "Claim failed.");
       }
@@ -4724,7 +4776,7 @@ $(document).on("click", ".delete-or", function(e) {
     success: function(res) {
       if (res.status === "success") {
         toastr.success(res.message || "Material request deleted.");
-        ortable.ajax.reload(null, false);
+        reloadDataTable(ortable);
       } else {
         toastr.error(res.message || "Delete failed.");
       }
@@ -4952,7 +5004,12 @@ $(document).on('click', '.edit-project-btn', function() {
     const projCode = $(this).data('id');
     const row = $(this).closest('tr');
     const tableRow = row.hasClass('child') ? row.prev() : row;
-    let table = projecttable || $('#project-list').DataTable();
+    initProjectSection();
+    let table = projecttable;
+    if (!table) {
+        toastr.error('Unable to load project list.');
+        return;
+    }
     let data = table.row(tableRow).data();
 
     if (!data && projCode) {
@@ -5013,7 +5070,7 @@ $('#project-form').on('submit', function(e){
             if(res.status === 'success'){
                 toastr.success(res.message);
                 resetProjectForm();
-                projecttable.ajax.reload(null, false);
+                reloadDataTable(projecttable);
             } else {
                 toastr.error(res.message);
             }
@@ -5046,7 +5103,7 @@ $(document).on('click', '.approve-project-btn', function() {
         success: function(res) {
             if (res.status === 'success') {
                 toastr.success(res.message);
-                projecttable.ajax.reload(null, false);
+                reloadDataTable(projecttable);
             } else {
                 toastr.error(res.message || 'Approval failed.');
             }
@@ -5076,7 +5133,7 @@ $('#supplierForm').on('submit', function(e){
             if(res.status === 'success'){
                 toastr.success(res.message);
                 resetSupplierForm();
-                supplierTable.ajax.reload(null, false);
+                reloadDataTable(supplierTable);
             } else {
                 toastr.error(res.message);
             }
@@ -5150,7 +5207,7 @@ $(document).on('click', '.delete-supplier', function(e) {
             if (res.status === 'success') {
                 toastr.success(res.message);
                 resetSupplierForm();
-                supplierTable.ajax.reload(null, false);
+                reloadDataTable(supplierTable);
             } else {
                 toastr.error(res.message);
             }
@@ -5227,7 +5284,7 @@ $('#userForm').on('submit', function(e) {
             if (res.status === 'success') {
                 toastr.success(res.message);
                 $('#userModal').modal('hide');
-                userTable.ajax.reload(null, false);
+                reloadDataTable(userTable);
             } else {
                 toastr.error(res.message);
             }
@@ -5285,7 +5342,7 @@ $(document).on('click', '.delete-user', function(e) {
         success: function(res) {
             if (res.status === 'success') {
                 toastr.success(res.message);
-                userTable.ajax.reload(null, false);
+                reloadDataTable(userTable);
             } else {
                 toastr.error(res.message);
             }
@@ -5574,7 +5631,7 @@ $('#itemRequestForm').on('submit', function(e){
 
             if(res === "success"){
                 toastr.success(isEdit ? "Item request updated!" : "Item request submitted!");
-					itemspo.ajax.reload(null, false);
+					reloadDataTable(itemspo);
                 $('#itemRequestModal').modal('hide');
                 resetItemRequestModal();
 
@@ -5631,7 +5688,7 @@ $(document).on('click', '.delete-item-request', function(e) {
             if (res.status === 'success') {
                 toastr.success(res.message || 'Item request deleted.');
                 if (itemspo) {
-                    itemspo.ajax.reload(null, false);
+                    reloadDataTable(itemspo);
                 }
             } else {
                 toastr.error(res.message || 'Delete failed.');
@@ -5671,12 +5728,12 @@ $(document).on('click', '.create-item-request-pr', function(e) {
         success: function(res) {
             if (res.status === 'success') {
                 toastr.success(res.message);
-                itemspo.ajax.reload(null, false);
+                reloadDataTable(itemspo);
                 if (purchaseRequestTable) {
-                    purchaseRequestTable.ajax.reload(null, false);
+                    reloadDataTable(purchaseRequestTable);
                 }
                 if (inventoryPurchaseRequestTable) {
-                    inventoryPurchaseRequestTable.ajax.reload(null, false);
+                    reloadDataTable(inventoryPurchaseRequestTable);
                 }
             } else {
                 toastr.error(res.message || 'Failed to create PR request.');
@@ -5943,13 +6000,13 @@ $(document).on('click', '#savePoBtn', function () {
                 toastr.success(res.message || 'Purchase order saved.');
                 $('#poModal').modal('hide');
                 if (purchaseRequestTable) {
-                    purchaseRequestTable.ajax.reload(null, false);
+                    reloadDataTable(purchaseRequestTable);
                 }
                 if (inventoryPurchaseRequestTable) {
-                    inventoryPurchaseRequestTable.ajax.reload(null, false);
+                    reloadDataTable(inventoryPurchaseRequestTable);
                 }
                 if (purchaseOrderTable) {
-                    purchaseOrderTable.ajax.reload(null, false);
+                    reloadDataTable(purchaseOrderTable);
                 }
             } else {
                 toastr.error(res.message || 'Failed to save purchase order.');
@@ -6002,13 +6059,13 @@ $(document).on('click', '.receive-pr-items', function(e) {
             if (res.status === 'success') {
                 toastr.success(res.message || 'Items received.');
                 if (inventoryPurchaseRequestTable) {
-                    inventoryPurchaseRequestTable.ajax.reload(null, false);
+                    reloadDataTable(inventoryPurchaseRequestTable);
                 }
                 if (purchaseRequestTable) {
-                    purchaseRequestTable.ajax.reload(null, false);
+                    reloadDataTable(purchaseRequestTable);
                 }
                 if (purchaseOrderTable) {
-                    purchaseOrderTable.ajax.reload(null, false);
+                    reloadDataTable(purchaseOrderTable);
                 }
             } else {
                 toastr.error(res.message || 'Failed to mark items received.');
@@ -6043,13 +6100,13 @@ $(document).on('click', '.delete-pr-request', function(e) {
             if (res.status === 'success') {
                 toastr.success(res.message || 'Purchase request deleted.');
                 if (purchaseRequestTable) {
-                    purchaseRequestTable.ajax.reload(null, false);
+                    reloadDataTable(purchaseRequestTable);
                 }
                 if (inventoryPurchaseRequestTable) {
-                    inventoryPurchaseRequestTable.ajax.reload(null, false);
+                    reloadDataTable(inventoryPurchaseRequestTable);
                 }
                 if (myGeneratedPrTable) {
-                    myGeneratedPrTable.ajax.reload(null, false);
+                    reloadDataTable(myGeneratedPrTable);
                 }
             } else {
                 toastr.error(res.message || 'Delete failed.');
@@ -6061,13 +6118,13 @@ $(document).on('click', '.delete-pr-request', function(e) {
             toastr.error(message);
             if (message.toLowerCase().includes('deleted')) {
                 if (purchaseRequestTable) {
-                    purchaseRequestTable.ajax.reload(null, false);
+                    reloadDataTable(purchaseRequestTable);
                 }
                 if (inventoryPurchaseRequestTable) {
-                    inventoryPurchaseRequestTable.ajax.reload(null, false);
+                    reloadDataTable(inventoryPurchaseRequestTable);
                 }
                 if (myGeneratedPrTable) {
-                    myGeneratedPrTable.ajax.reload(null, false);
+                    reloadDataTable(myGeneratedPrTable);
                 }
             }
         }
@@ -6098,7 +6155,7 @@ $(document).on('click', '.approve-po', function(e) {
             if (res.status === 'success') {
                 toastr.success(res.message || 'PO approved.');
                 if (purchaseOrderTable) {
-                    purchaseOrderTable.ajax.reload(null, false);
+                    reloadDataTable(purchaseOrderTable);
                 }
             } else {
                 toastr.error(res.message || 'Failed to approve PO.');
@@ -6133,16 +6190,16 @@ $(document).on('click', '.delete-po-request', function(e) {
             if (res.status === 'success') {
                 toastr.success(res.message || 'Purchase order deleted.');
                 if (purchaseOrderTable) {
-                    purchaseOrderTable.ajax.reload(null, false);
+                    reloadDataTable(purchaseOrderTable);
                 }
                 if (purchaseRequestTable) {
-                    purchaseRequestTable.ajax.reload(null, false);
+                    reloadDataTable(purchaseRequestTable);
                 }
                 if (inventoryPurchaseRequestTable) {
-                    inventoryPurchaseRequestTable.ajax.reload(null, false);
+                    reloadDataTable(inventoryPurchaseRequestTable);
                 }
                 if (myGeneratedPrTable) {
-                    myGeneratedPrTable.ajax.reload(null, false);
+                    reloadDataTable(myGeneratedPrTable);
                 }
             } else {
                 toastr.error(res.message || 'Delete failed.');
@@ -6172,15 +6229,15 @@ $('#fulfillPoForm').on('submit', function(e) {
             if (res.status === 'success') {
                 toastr.success(res.message);
                 $('#fulfillPoModal').modal('hide');
-                purchaseOrderTable.ajax.reload(null, false);
+                reloadDataTable(purchaseOrderTable);
                 if (purchaseRequestTable) {
-                    purchaseRequestTable.ajax.reload(null, false);
+                    reloadDataTable(purchaseRequestTable);
                 }
                 if (inventoryPurchaseRequestTable) {
-                    inventoryPurchaseRequestTable.ajax.reload(null, false);
+                    reloadDataTable(inventoryPurchaseRequestTable);
                 }
                 if (auditLogTable) {
-                    auditLogTable.ajax.reload(null, false);
+                    reloadDataTable(auditLogTable);
                 }
             } else {
                 toastr.error(res.message || 'Failed to fulfill PO.');
@@ -6325,17 +6382,17 @@ $(document).on('click', '.encode-pr-item', function(e) {
             if (res.status === 'success') {
                 toastr.success(res.message);
                 row.find('td:last').html('<span class="badge badge-success">PO Encoded</span>');
-                stocktable.ajax.reload(null, false);
-                inventorytable.ajax.reload(null, false);
-                invInHistoryTable.ajax.reload(null, false);
+                reloadDataTable(stocktable);
+                reloadDataTable(inventorytable);
+                reloadDataTable(invInHistoryTable);
                 if (inventoryPurchaseRequestTable) {
-                    inventoryPurchaseRequestTable.ajax.reload(null, false);
+                    reloadDataTable(inventoryPurchaseRequestTable);
                 }
                 if (purchaseRequestTable) {
-                    purchaseRequestTable.ajax.reload(null, false);
+                    reloadDataTable(purchaseRequestTable);
                 }
                 if (auditLogTable) {
-                    auditLogTable.ajax.reload(null, false);
+                    reloadDataTable(auditLogTable);
                 }
             } else {
                 toastr.error(res.message || 'Failed to encode item.');
