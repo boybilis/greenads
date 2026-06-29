@@ -11,10 +11,20 @@ if (!isset($_SESSION['user_code'])) {
 }
 
 if (isset($_SESSION['user_dept']) && $_SESSION['user_dept'] === 'Project') {
-    $stmt = $pdo->prepare("SELECT * FROM tbl_or WHERE user_code = ? ORDER BY proj_code ASC");
+    $stmt = $pdo->prepare("
+        SELECT o.*, p.proj_name
+        FROM tbl_or o
+        LEFT JOIN tbl_project p ON p.proj_code = o.proj_code
+        WHERE o.user_code = ?
+        ORDER BY o.proj_code ASC
+    ");
     $stmt->execute([$_SESSION['user_code']]);
 } else {
-    $stmt = $pdo->query("SELECT * FROM tbl_or");
+    $stmt = $pdo->query("
+        SELECT o.*, p.proj_name
+        FROM tbl_or o
+        LEFT JOIN tbl_project p ON p.proj_code = o.proj_code
+    ");
 }
 
 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -51,6 +61,7 @@ if ($rows && is_array($rows)) {
         $or_no = htmlspecialchars($row['or_no']);
         $dept  = htmlspecialchars($row['dept_code']);
         $proj  = htmlspecialchars($row['proj_code']);
+        $projName = htmlspecialchars($row['proj_name'] ?: '-');
         $prep  = htmlspecialchars($row['prepared_by']);
 
         // ✅ VIEW BUTTON INSIDE OR NO
@@ -90,6 +101,7 @@ if ($rows && is_array($rows)) {
             "or_no" => $or_display,
             "or_date" => $date,
             "dept_code" => $dept,
+            "proj_name" => $projName,
             "proj_code" => $proj,
             "prepared_by" => $prep,
             "grand_total" => number_format((float)$row['grand_total'], 2),
