@@ -27,6 +27,10 @@ try {
             INDEX idx_po_prs_pr_id (pr_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ");
+    $poColumns = $pdo->query("SHOW COLUMNS FROM tbl_purchase_orders")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('approval_status', $poColumns, true)) {
+        $pdo->exec("ALTER TABLE tbl_purchase_orders ADD approval_status VARCHAR(30) NOT NULL DEFAULT 'Pending'");
+    }
 
     $where = '';
     $params = [];
@@ -50,14 +54,23 @@ try {
             pr.requested_by,
             pr.status,
             MAX(COALESCE(popr.po_id, po.po_id)) AS po_id,
-            COUNT(pri.pr_item_id) AS item_count,
-            COALESCE(SUM(pri.request_qty), 0) AS total_qty
+            MAX(CASE
+                WHEN COALESCE(linked_po.approval_status, po.approval_status, 'Pending') = 'Approved' THEN 1
+                ELSE 0
+            END) AS po_approved,
+            COALESCE(pri.item_count, 0) AS item_count,
+            COALESCE(pri.total_qty, 0) AS total_qty
         FROM tbl_purchase_requests pr
-        LEFT JOIN tbl_purchase_request_items pri ON pri.pr_id = pr.pr_id
+        LEFT JOIN (
+            SELECT pr_id, COUNT(*) AS item_count, SUM(request_qty) AS total_qty
+            FROM tbl_purchase_request_items
+            GROUP BY pr_id
+        ) pri ON pri.pr_id = pr.pr_id
         LEFT JOIN tbl_purchase_orders po ON po.pr_id = pr.pr_id
         LEFT JOIN tbl_purchase_order_prs popr ON popr.pr_id = pr.pr_id
+        LEFT JOIN tbl_purchase_orders linked_po ON linked_po.po_id = popr.po_id
         {$where}
-        GROUP BY pr.pr_id, pr.pr_ref_no, pr.request_date, pr.proj_code, pr.requested_by, pr.status
+        GROUP BY pr.pr_id, pr.pr_ref_no, pr.request_date, pr.proj_code, pr.requested_by, pr.status, pri.item_count, pri.total_qty
         ORDER BY pr.pr_id DESC
     ");
     $stmt->execute($params);
@@ -79,7 +92,11 @@ try {
 
         $action = '<a href="#" class="view-pr-request" data-id="' . (int)$row['pr_id'] . '"><span class="badge badge-info">View</span></a>';
         if (in_array($userType, ['Admin', 'Inventory'], true) && $status === 'PO Requested') {
-            $action .= ' <a href="#" class="receive-pr-items" data-id="' . (int)$row['pr_id'] . '" data-ref="' . htmlspecialchars($row['pr_ref_no'] ?: ('PR-' . str_pad((string)$row['pr_id'], 6, '0', STR_PAD_LEFT))) . '"><span class="badge badge-warning">Receive Item</span></a>';
+            if ((int)($row['po_approved'] ?? 0) === 1) {
+                $action .= ' <a href="#" class="receive-pr-items" data-id="' . (int)$row['pr_id'] . '" data-ref="' . htmlspecialchars($row['pr_ref_no'] ?: ('PR-' . str_pad((string)$row['pr_id'], 6, '0', STR_PAD_LEFT))) . '"><span class="badge badge-warning">Receive Item</span></a>';
+            } else {
+                $action .= ' <span class="badge badge-secondary" title="PO must be approved by Admin before receiving items.">Receive Item (PO for Approval)</span>';
+            }
         }
         if (in_array($userType, ['Admin', 'Inventory'], true) && $status === 'PO Fulfilled') {
             $action .= ' <a href="#" class="encode-pr-request" data-id="' . (int)$row['pr_id'] . '" data-po-id="' . (int)$row['po_id'] . '"><span class="badge badge-success">Encode</span></a>';

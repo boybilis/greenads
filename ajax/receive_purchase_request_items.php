@@ -24,6 +24,19 @@ if ($prId <= 0) {
 }
 
 try {
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS tbl_purchase_order_prs (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            po_id INT NOT NULL,
+            pr_id INT NOT NULL,
+            pr_ref_no VARCHAR(30) DEFAULT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_po_pr (po_id, pr_id),
+            INDEX idx_po_prs_po_id (po_id),
+            INDEX idx_po_prs_pr_id (pr_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+
     $prStmt = $pdo->prepare("SELECT pr_id, pr_ref_no, status FROM tbl_purchase_requests WHERE pr_id = ? LIMIT 1");
     $prStmt->execute([$prId]);
     $pr = $prStmt->fetch(PDO::FETCH_ASSOC);
@@ -40,6 +53,27 @@ try {
 
     if (($pr['status'] ?? '') !== 'PO Requested') {
         echo json_encode(['status' => 'error', 'message' => 'Only PO Requested items can be marked received.']);
+        exit;
+    }
+
+    $poColumns = $pdo->query("SHOW COLUMNS FROM tbl_purchase_orders")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('approval_status', $poColumns, true)) {
+        $pdo->exec("ALTER TABLE tbl_purchase_orders ADD approval_status VARCHAR(30) NOT NULL DEFAULT 'Pending'");
+    }
+
+    $approvedPoStmt = $pdo->prepare("
+        SELECT COUNT(DISTINCT po.po_id)
+        FROM tbl_purchase_orders po
+        LEFT JOIN tbl_purchase_order_prs popr ON popr.po_id = po.po_id
+        WHERE (po.pr_id = ? OR popr.pr_id = ?)
+          AND COALESCE(po.approval_status, 'Pending') = 'Approved'
+    ");
+    $approvedPoStmt->execute([$prId, $prId]);
+    if ((int)$approvedPoStmt->fetchColumn() === 0) {
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'The PO must be approved by Admin before items can be received.'
+        ]);
         exit;
     }
 
