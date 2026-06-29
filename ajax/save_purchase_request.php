@@ -13,6 +13,15 @@ if (!isset($_SESSION['user_code'])) {
     exit;
 }
 
+if (($_SESSION['user_type'] ?? '') !== 'Manager') {
+    http_response_code(403);
+    echo json_encode([
+        'status' => 'error',
+        'message' => 'Only project managers can create PR requests.'
+    ]);
+    exit;
+}
+
 $items = $_POST['items'] ?? [];
 $payload = trim($_POST['pr_items_payload'] ?? '');
 $requestedBy = $_SESSION['username'] ?? $_SESSION['user_code'];

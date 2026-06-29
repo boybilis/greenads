@@ -21,48 +21,6 @@ try {
 }
 $projectApprovalFilterSql = $hasProjectApprovalColumn ? "COALESCE(proj_approval_status, 1) = 1" : "1 = 1";
 
-$purchaseRequestLowStockItems = [];
-try {
-    $columns = $pdo->query("SHOW COLUMNS FROM tbl_items")->fetchAll(PDO::FETCH_COLUMN);
-    if (!in_array('reorder_level', $columns, true)) {
-        $pdo->exec("ALTER TABLE tbl_items ADD reorder_level INT NOT NULL DEFAULT 10");
-    }
-
-    $prItemsStmt = $pdo->query("
-        SELECT
-            sku,
-            material_name,
-            description,
-            unit,
-            available_qty,
-            reorder_level,
-            GREATEST(reorder_level - available_qty, 1) AS suggested_qty
-        FROM (
-            SELECT
-                i.sku,
-                i.material_name,
-                i.description,
-                i.unit,
-                i.quantity,
-                COALESCE(r.reserved_qty, 0) AS reserved_qty,
-                (i.quantity - COALESCE(r.reserved_qty, 0)) AS available_qty,
-                i.reorder_level
-            FROM tbl_items i
-            LEFT JOIN (
-                SELECT oi.sku, SUM(oi.qty) AS reserved_qty
-                FROM tbl_or_items oi
-                INNER JOIN tbl_or o ON o.or_id = oi.or_id
-                WHERE o.or_status = 0
-                GROUP BY oi.sku
-            ) r ON r.sku = i.sku
-        ) stock
-        WHERE available_qty > 0 AND available_qty <= reorder_level
-        ORDER BY material_name ASC, sku ASC
-    ");
-    $purchaseRequestLowStockItems = $prItemsStmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (Exception $e) {
-    $purchaseRequestLowStockItems = [];
-}
 ?>
 
 <!DOCTYPE html>
@@ -1621,50 +1579,7 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 		</div>
 		
 		<div class="row">
-		<div class="col-6">
-		<!-- TABLE: LATEST ORDERS -->
-            <div class="card">
-              <div class="card-header border-transparent bg-success">
-                <h3 class="card-title">Low in Stock</h3>
-
-                <div class="card-tools">
-                  <button type="button" class="btn btn-tool" data-card-widget="collapse">
-                    <i class="fas fa-minus"></i>
-                  </button>
-                  <button type="button" class="btn btn-tool" data-card-widget="remove">
-                    <i class="fas fa-times"></i>
-                  </button>
-                </div>
-              </div>
-              <!-- /.card-header -->
-              <div class="card-body p-3">
-                <div class="table-responsive">
-                  <table class="table m-0 table-striped" id="inv-low-stock">
-                    <thead>
-                    <tr>
-                      <th>SKU</th>
-                      <th>Product Name</th>
-                      <th>Description</th>
-                      <th>Quantity</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    </tbody>
-                  </table>
-                </div>
-                <!-- /.table-responsive -->
-              </div>
-              <!-- /.card-body -->
-              <div class="card-footer clearfix">
-               <!-- <a href="javascript:void(0)" class="btn btn-sm btn-info float-left">Place New Order</a> -->
-                <a href="javascript:void(0)" class="btn btn-sm btn-secondary float-right open-pr-request">PR Request</a>
-              </div>
-              <!-- /.card-footer -->
-            </div>
-            <!-- /.card -->
-			</div>
-			<!-- .col-6 -->
-		<div class="col-6">
+		<div class="col-12">
             <div class="card">
               <div class="card-header border-warning bg-light">
                 <h3 class="card-title">Generated PR Requests</h3>
@@ -1690,7 +1605,7 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
               </div>
             </div>
 			</div>
-			<!-- .col-6 -->
+			<!-- .col-12 -->
 		</div>
 
 		<div class="row">
@@ -2916,87 +2831,6 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 </div>
 <!-- end inventory out modal -->
 
-<!-- purchase request modal -->
-<div class="modal fade" id="purchaseRequestModal" tabindex="-1">
-  <div class="modal-dialog modal-xl">
-    <div class="modal-content">
-
-      <div class="modal-header">
-        <h5 class="modal-title">Low Stock Purchase Request</h5>
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-          <span aria-hidden="true">&times;</span>
-        </button>
-      </div>
-
-      <form id="purchaseRequestForm">
-        <input type="hidden" name="pr_items_payload" id="pr_items_payload">
-        <div class="modal-body">
-          <div class="alert alert-info py-2">
-            This creates a PR reference for Purchasing. The actual supplier PO will be created later by Purchasing.
-          </div>
-
-          <div class="table-responsive">
-            <table class="table table-bordered table-striped m-0" id="purchaseRequestItemsTable">
-              <thead>
-                <tr>
-                  <th>SKU</th>
-                  <th>Material</th>
-                  <th>Available</th>
-                  <th>Reorder Level</th>
-                  <th>Unit</th>
-                  <th style="width: 160px;">Request Qty</th>
-                </tr>
-              </thead>
-              <tbody>
-                <?php if (empty($purchaseRequestLowStockItems)): ?>
-                  <tr>
-                    <td colspan="6" class="text-center text-muted">No low stock materials found.</td>
-                  </tr>
-                <?php else: ?>
-                  <?php foreach ($purchaseRequestLowStockItems as $index => $item): ?>
-                    <tr>
-                      <td>
-                        <?= htmlspecialchars($item['sku']); ?>
-                        <input type="hidden" name="items[<?= (int)$index; ?>][sku]" value="<?= htmlspecialchars($item['sku']); ?>">
-                      </td>
-                      <td>
-                        <strong><?= htmlspecialchars($item['material_name']); ?></strong>
-                        <br><small class="text-muted"><?= htmlspecialchars($item['description'] ?: '-'); ?></small>
-                      </td>
-                      <td><?= htmlspecialchars((float)$item['available_qty'] . ' ' . ($item['unit'] ?? '')); ?></td>
-                      <td><?= htmlspecialchars((float)$item['reorder_level']); ?></td>
-                      <td><?= htmlspecialchars($item['unit'] ?? ''); ?></td>
-                      <td>
-                        <input type="number"
-                               class="form-control form-control-sm pr-request-qty"
-                               data-index="<?= (int)$index; ?>"
-                               name="items[<?= (int)$index; ?>][request_qty]"
-                               min="0"
-                               step="0.01"
-                               value="<?= htmlspecialchars((float)$item['suggested_qty']); ?>"
-                               required>
-                      </td>
-                    </tr>
-                  <?php endforeach; ?>
-                <?php endif; ?>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-          <button type="submit" class="btn btn-success" id="savePurchaseRequestBtn" <?= empty($purchaseRequestLowStockItems) ? 'disabled' : ''; ?>>
-            <i class="fas fa-save"></i> Save PR Request
-          </button>
-        </div>
-      </form>
-
-    </div>
-  </div>
-</div>
-<!-- end purchase request modal -->
-
 <!-- purchase request details modal -->
 <div class="modal fade" id="purchaseRequestDetailsModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
@@ -3200,21 +3034,10 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <script src="dist/js/pages/dashboard2.js"></script>
 
 <script>
-let ortable, itemspo, stocktable, inventorytable, invLowStockTable, invInHistoryTable, invOutHistoryTable, inventoryMonthlySummaryTable, projecttable, projectMrReportTable, supplierTable, purchaseRequestTable, inventoryPurchaseRequestTable, purchaseOrderTable, userTable, auditLogTable;
+let ortable, itemspo, stocktable, inventorytable, invInHistoryTable, invOutHistoryTable, inventoryMonthlySummaryTable, projecttable, projectMrReportTable, supplierTable, purchaseRequestTable, inventoryPurchaseRequestTable, purchaseOrderTable, userTable, auditLogTable;
 let myGeneratedPrTable;
 let encodePrItemsCache = {};
 let pendingEncodeAfterProductSave = null;
-let purchaseRequestItemsCache = <?= json_encode(array_map(function($item) {
-    return [
-        'sku' => $item['sku'],
-        'material_name' => $item['material_name'],
-        'description' => $item['description'],
-        'available_qty' => (float)$item['available_qty'],
-        'reorder_level' => (float)$item['reorder_level'],
-        'unit' => $item['unit'],
-        'suggested_qty' => (float)$item['suggested_qty']
-    ];
-}, $purchaseRequestLowStockItems)); ?>;
 $(document).ready(function() {
    // $('.table').DataTable();
 
@@ -3296,12 +3119,6 @@ $(document).ready(function() {
 	
 	inventorytable = $('#inventory-list').DataTable({
         ajax: 'ajax/fetch_items_inventory.php',
-        responsive: true,
-        autoWidth: false
-    });
-
-	invLowStockTable = $('#inv-low-stock').DataTable({
-        ajax: 'ajax/fetch_inventory_stock_status.php?type=low',
         responsive: true,
         autoWidth: false
     });
@@ -3701,7 +3518,6 @@ $(document).ready(function() {
 					loadInventoryInItems(true);
 					stocktable.ajax.reload(null, false);
 					inventorytable.ajax.reload(null, false);
-					invLowStockTable.ajax.reload(null, false);
 					invInHistoryTable.ajax.reload(null, false);
 				} else {
 					toastr.error(res.message);
@@ -3751,7 +3567,6 @@ $(document).ready(function() {
 					loadInventoryInItems(true);
 					stocktable.ajax.reload(null, false);
 					inventorytable.ajax.reload(null, false);
-					invLowStockTable.ajax.reload(null, false);
 					invOutHistoryTable.ajax.reload(null, false);
 				} else {
 					toastr.error(res.message);
@@ -4301,7 +4116,6 @@ $('#material_name, #color, #gsm').on('input blur', buildSkuPreview);
 				  
 				stocktable.ajax.reload(null, false);
 				inventorytable.ajax.reload(null, false);
-				invLowStockTable.ajax.reload(null, false);
                 if (pendingEncode && generatedSku) {
                     if (encodePrItemsCache[pendingEncode.poItemId]) {
                         encodePrItemsCache[pendingEncode.poItemId].item_exists = true;
@@ -4399,9 +4213,6 @@ $('#material_name, #color, #gsm').on('input blur', buildSkuPreview);
                     }
                     if (inventorytable) {
                         inventorytable.ajax.reload(null, false);
-                    }
-                    if (invLowStockTable) {
-                        invLowStockTable.ajax.reload(null, false);
                     }
                 } else {
                     toastr.error(res.message || 'Unable to delete item.');
@@ -4848,7 +4659,6 @@ $(document).on("click", "#approveOrBtn", function(e) {
         ortable.ajax.reload(null, false);
         stocktable.ajax.reload(null, false);
         inventorytable.ajax.reload(null, false);
-        invLowStockTable.ajax.reload(null, false);
         invOutHistoryTable.ajax.reload(null, false);
       } else {
         toastr.error(res.message);
@@ -5544,110 +5354,6 @@ $('#auditReportForm').on('submit', function(e) {
 
     window.open('audit_trail_report?start_date=' + encodeURIComponent(startDate) + '&end_date=' + encodeURIComponent(endDate), '_blank');
     $('#auditReportModal').modal('hide');
-});
-
-function renderPurchaseRequestItems(items) {
-    let tbody = $('#purchaseRequestItemsTable tbody');
-    tbody.empty();
-    purchaseRequestItemsCache = items || [];
-    $('#pr_items_payload').val('');
-
-    if (!items.length) {
-        tbody.html('<tr><td colspan="6" class="text-center text-muted">No low stock materials found.</td></tr>');
-        $('#savePurchaseRequestBtn').prop('disabled', true);
-        return;
-    }
-
-    $('#savePurchaseRequestBtn').prop('disabled', false);
-
-    items.forEach(function(item, index) {
-        let suggestedQty = parseFloat(item.suggested_qty || 1);
-        if (suggestedQty <= 0) {
-            suggestedQty = 1;
-        }
-
-        tbody.append(`
-            <tr>
-                <td>
-                    ${escapeHtml(item.sku)}
-                    <input type="hidden" name="items[${index}][sku]" value="${escapeHtml(item.sku)}">
-                </td>
-                <td>
-                    <strong>${escapeHtml(item.material_name)}</strong>
-                    <br><small class="text-muted">${escapeHtml(item.description || '-')}</small>
-                </td>
-                <td>${escapeHtml(item.available_qty)} ${escapeHtml(item.unit || '')}</td>
-                <td>${escapeHtml(item.reorder_level)}</td>
-                <td>${escapeHtml(item.unit || '')}</td>
-                <td>
-                    <input type="number" class="form-control form-control-sm pr-request-qty" data-index="${index}" name="items[${index}][request_qty]" min="0" step="0.01" value="${suggestedQty}" required>
-                </td>
-            </tr>
-        `);
-    });
-}
-
-function refreshPurchaseRequestPayload() {
-    let payload = [];
-
-    $('.pr-request-qty').each(function() {
-        let index = Number($(this).data('index'));
-        let item = purchaseRequestItemsCache[index];
-        let requestQty = parseFloat($(this).val() || 0);
-
-        if (item && requestQty > 0) {
-            payload.push({
-                sku: item.sku,
-                request_qty: requestQty
-            });
-        }
-    });
-
-    $('#pr_items_payload').val(JSON.stringify(payload));
-}
-
-$(document).on('click', '.open-pr-request', function(e) {
-    e.preventDefault();
-    $('#purchaseRequestModal').modal('show');
-});
-
-$('#purchaseRequestForm').on('submit', function(e) {
-    e.preventDefault();
-
-    let btn = $('#savePurchaseRequestBtn');
-    refreshPurchaseRequestPayload();
-
-    $.ajax({
-        url: 'ajax/save_purchase_request.php',
-        type: 'POST',
-        data: $(this).serialize(),
-        dataType: 'json',
-        beforeSend: function() {
-            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Saving...');
-        },
-        success: function(res) {
-            if (res.status === 'success') {
-                toastr.success(res.message);
-                $('#purchaseRequestModal').modal('hide');
-                $('#purchaseRequestForm')[0].reset();
-                if (purchaseRequestTable) {
-                    purchaseRequestTable.ajax.reload(null, false);
-                }
-                if (inventoryPurchaseRequestTable) {
-                    inventoryPurchaseRequestTable.ajax.reload(null, false);
-                }
-            } else {
-                toastr.error(res.message || 'Failed to save PR request.');
-            }
-        },
-        error: function(xhr) {
-            console.log(xhr.responseText);
-            toastr.error('Failed to save PR request.');
-        },
-        complete: function() {
-            btn.prop('disabled', false).html('<i class="fas fa-save"></i> Save PR Request');
-        }
-    });
 });
 
 $(document).on('click', '.view-pr-request', function (e) {
