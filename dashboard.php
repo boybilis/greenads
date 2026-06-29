@@ -2258,35 +2258,34 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
           <div class="form-group">
             <?php
-            $categoryFile = __DIR__ . '/data/item_categories.json';
+            $categoryDefaultFile = __DIR__ . '/data/item_categories.json';
+            $categoryLocalFile = __DIR__ . '/data/item_categories.local.json';
             $itemCategories = [
-                ['code' => 'fab', 'name' => 'Fabric'],
-                ['code' => 'threads', 'name' => 'Threads'],
-                ['code' => 'acc', 'name' => 'Accessories']
+                'fab' => ['code' => 'fab', 'name' => 'Fabric'],
+                'threads' => ['code' => 'threads', 'name' => 'Threads'],
+                'acc' => ['code' => 'acc', 'name' => 'Accessories']
             ];
-            if (is_readable($categoryFile)) {
-                $jsonCategories = json_decode((string)file_get_contents($categoryFile), true);
-                if (is_array($jsonCategories)) {
-                    $itemCategories = [];
-                    foreach ($jsonCategories as $categoryRow) {
-                        $categoryCode = preg_replace('/[^a-z0-9_]/', '', strtolower((string)($categoryRow['code'] ?? '')));
-                        $categoryName = preg_replace('/\s+/', ' ', trim((string)($categoryRow['name'] ?? '')));
-                        if ($categoryCode !== '' && $categoryName !== '' && mb_strlen($categoryName, 'UTF-8') <= 60 && preg_match('/^[A-Za-z0-9][A-Za-z0-9 &()\/._-]*$/', $categoryName)) {
-                            $itemCategories[] = [
-                                'code' => $categoryCode,
-                                'name' => $categoryName
-                            ];
+            foreach ([$categoryDefaultFile, $categoryLocalFile] as $categoryFile) {
+                if (is_readable($categoryFile)) {
+                    $jsonCategories = json_decode((string)file_get_contents($categoryFile), true);
+                    if (is_array($jsonCategories)) {
+                        foreach ($jsonCategories as $categoryRow) {
+                            $categoryCode = preg_replace('/[^a-z0-9_]/', '', strtolower((string)($categoryRow['code'] ?? '')));
+                            $categoryName = preg_replace('/\s+/', ' ', trim((string)($categoryRow['name'] ?? '')));
+                            if ($categoryCode !== '' && $categoryName !== '' && mb_strlen($categoryName, 'UTF-8') <= 60 && preg_match('/^[A-Za-z0-9][A-Za-z0-9 &()\/._-]*$/', $categoryName)) {
+                                $itemCategories[$categoryCode] = [
+                                    'code' => $categoryCode,
+                                    'name' => $categoryName
+                                ];
+                            }
                         }
-                    }
-                    if (count($itemCategories) === 0) {
-                        $itemCategories = [
-                            ['code' => 'fab', 'name' => 'Fabric'],
-                            ['code' => 'threads', 'name' => 'Threads'],
-                            ['code' => 'acc', 'name' => 'Accessories']
-                        ];
                     }
                 }
             }
+            $itemCategories = array_values($itemCategories);
+            usort($itemCategories, function($a, $b) {
+                return strcasecmp($a['name'] ?? '', $b['name'] ?? '');
+            });
             ?>
             <label>Category</label>
             <a href="#" id="openAddCategoryModal" class="float-right small">Add new Category</a>

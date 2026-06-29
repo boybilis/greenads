@@ -52,7 +52,8 @@ function clean_category_row($category) {
     return ['code' => $code, 'name' => $name];
 }
 
-$categoryFile = dirname(__DIR__) . '/data/item_categories.json';
+$categoryDefaultFile = dirname(__DIR__) . '/data/item_categories.json';
+$categoryFile = dirname(__DIR__) . '/data/item_categories.local.json';
 $categoryDir = dirname($categoryFile);
 
 if (!is_dir($categoryDir) && !mkdir($categoryDir, 0775, true)) {
@@ -72,20 +73,33 @@ $defaultCategories = [
     ['code' => 'acc', 'name' => 'Accessories']
 ];
 
-$categories = $defaultCategories;
-if (is_readable($categoryFile)) {
-    $decoded = json_decode((string)file_get_contents($categoryFile), true);
-    if (is_array($decoded)) {
-        $categories = [];
-        foreach ($decoded as $category) {
-            $clean = clean_category_row(is_array($category) ? $category : []);
-            if ($clean !== null) {
-                $categories[$clean['code']] = $clean;
-            }
-        }
-        $categories = array_values($categories);
+$categories = [];
+foreach ($defaultCategories as $category) {
+    $clean = clean_category_row($category);
+    if ($clean !== null) {
+        $categories[$clean['code']] = $clean;
     }
 }
+
+foreach ([$categoryDefaultFile, $categoryFile] as $readFile) {
+    if (!is_readable($readFile)) {
+        continue;
+    }
+
+    $decoded = json_decode((string)file_get_contents($readFile), true);
+    if (!is_array($decoded)) {
+        continue;
+    }
+
+    foreach ($decoded as $category) {
+        $clean = clean_category_row(is_array($category) ? $category : []);
+        if ($clean !== null) {
+            $categories[$clean['code']] = $clean;
+        }
+    }
+}
+
+$categories = array_values($categories);
 
 foreach ($categories as $category) {
     if (strcasecmp($category['name'] ?? '', $categoryName) === 0) {
