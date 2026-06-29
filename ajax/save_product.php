@@ -3,11 +3,17 @@ session_start();
 include_once('config.php');
 include_once('audit_helper.php');
 
+set_exception_handler(function(Throwable $e) {
+	error_log('save_product failed: ' . $e->getMessage());
+	http_response_code(500);
+	header('Content-Type: application/json');
+	echo json_encode([
+		'status' => 'error',
+		'message' => 'Unable to save item. Please verify the item details and try again.'
+	]);
+});
+
 $itemColumns = $pdo->query("SHOW COLUMNS FROM tbl_items")->fetchAll(PDO::FETCH_COLUMN);
-if (!in_array('created_at', $itemColumns, true)) {
-	$pdo->exec("ALTER TABLE tbl_items ADD created_at DATETIME DEFAULT NULL");
-	$itemColumns[] = 'created_at';
-}
 
 $userType = $_SESSION['user_type'] ?? '';
 $canManagePricing = in_array($userType, ['Admin', 'Purchasing'], true);

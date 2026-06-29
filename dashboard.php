@@ -4310,8 +4310,10 @@ $('#material_name, #color, #gsm').on('input blur', buildSkuPreview);
 				 //  window.location.reload();
 				}
 			  },
-			  error: function(data) {
-				toastr.warning("Contact your Administrator!");
+			  error: function(xhr) {
+				console.error(xhr.responseText);
+				let message = xhr.responseJSON?.message || 'Unable to save item. Please verify the item details and try again.';
+				toastr.error(message);
 			  }
 			});
 		  });
