@@ -19,7 +19,13 @@ if ($projCode === '') {
 
 function project_delete_table_exists(PDO $pdo, string $table): bool
 {
-    $stmt = $pdo->prepare('SHOW TABLES LIKE ?');
+    $stmt = $pdo->prepare('
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = DATABASE()
+          AND table_name = ?
+        LIMIT 1
+    ');
     $stmt->execute([$table]);
     return (bool)$stmt->fetchColumn();
 }
