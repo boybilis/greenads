@@ -41,6 +41,8 @@ if ($rows && is_array($rows)) {
 			$status='<span class="badge bg-warning text-dark">Pending</span>';
 		}elseif($status=='Ordered'){
 			$status='<span class="badge bg-info">Ordered</span>';
+		}elseif($status=='Now available'){
+			$status='<span class="badge bg-success">Now available</span>';
 		}
 
        $desc = !empty($row['description']) ? htmlspecialchars($row['description'], ENT_QUOTES, 'UTF-8') : '-';

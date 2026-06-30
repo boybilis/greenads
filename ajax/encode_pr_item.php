@@ -32,6 +32,17 @@ try {
     if (!in_array('unit_price', $poItemColumns, true)) {
         $pdo->exec("ALTER TABLE tbl_purchase_order_items ADD unit_price DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER po_qty");
     }
+    $prItemColumns = $pdo->query("SHOW COLUMNS FROM tbl_purchase_request_items")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('item_request_id', $prItemColumns, true)) {
+        $pdo->exec("ALTER TABLE tbl_purchase_request_items ADD item_request_id INT DEFAULT NULL AFTER pr_id");
+        $pdo->exec("CREATE INDEX idx_pr_items_item_request_id ON tbl_purchase_request_items (item_request_id)");
+    }
+    $pdo->exec("
+        UPDATE tbl_purchase_request_items
+        SET item_request_id = CAST(SUBSTRING(sku, 5) AS UNSIGNED)
+        WHERE item_request_id IS NULL
+          AND sku REGEXP '^REQ-[0-9]+$'
+    ");
 
     $pdo->exec("CREATE TABLE IF NOT EXISTS tbl_inventory_in (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -65,6 +76,7 @@ try {
             po.date_received,
             poi.po_item_id,
             poi.pr_item_id,
+            pri.item_request_id,
             poi.sku,
             poi.item_name,
             poi.po_qty,
@@ -200,6 +212,15 @@ try {
     if ($remaining === 0) {
         $closeStmt = $pdo->prepare("UPDATE tbl_purchase_requests SET status = 'Encoded' WHERE pr_id = ?");
         $closeStmt->execute([$prId]);
+
+        $availableStmt = $pdo->prepare("
+            UPDATE item_requests ir
+            INNER JOIN tbl_purchase_request_items pri ON pri.item_request_id = ir.id
+            SET ir.status = 'Now available'
+            WHERE pri.pr_id = ?
+              AND ir.status = 'Ordered'
+        ");
+        $availableStmt->execute([$prId]);
     }
 
     $pdo->commit();

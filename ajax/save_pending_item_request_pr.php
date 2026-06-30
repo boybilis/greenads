@@ -106,6 +106,7 @@ try {
         CREATE TABLE IF NOT EXISTS tbl_purchase_request_items (
             pr_item_id INT AUTO_INCREMENT PRIMARY KEY,
             pr_id INT NOT NULL,
+            item_request_id INT DEFAULT NULL,
             sku VARCHAR(100) NOT NULL,
             item_name VARCHAR(255) NOT NULL,
             description TEXT NULL,
@@ -117,9 +118,15 @@ try {
             reorder_level DECIMAL(12,2) NOT NULL DEFAULT 0,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             INDEX idx_pr_items_pr_id (pr_id),
+            INDEX idx_pr_items_item_request_id (item_request_id),
             INDEX idx_pr_items_sku (sku)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ");
+    $prItemColumns = $pdo->query("SHOW COLUMNS FROM tbl_purchase_request_items")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('item_request_id', $prItemColumns, true)) {
+        $pdo->exec("ALTER TABLE tbl_purchase_request_items ADD item_request_id INT DEFAULT NULL AFTER pr_id");
+        $pdo->exec("CREATE INDEX idx_pr_items_item_request_id ON tbl_purchase_request_items (item_request_id)");
+    }
 
     $pdo->beginTransaction();
 
@@ -143,9 +150,9 @@ try {
 
     $insertItem = $pdo->prepare("
         INSERT INTO tbl_purchase_request_items
-            (pr_id, sku, item_name, description, request_qty, unit, on_hand_qty, reserved_qty, available_qty, reorder_level)
+            (pr_id, item_request_id, sku, item_name, description, request_qty, unit, on_hand_qty, reserved_qty, available_qty, reorder_level)
         VALUES
-            (?, ?, ?, ?, ?, ?, 0, 0, 0, 0)
+            (?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0)
     ");
 
     $updateItemRequest = $pdo->prepare("
@@ -163,6 +170,7 @@ try {
 
         $insertItem->execute([
             $prId,
+            (int)$item['id'],
             $sku,
             $item['item_name'],
             $description,

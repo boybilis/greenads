@@ -6449,6 +6449,7 @@ $(document).on('click', '.encode-pr-item', function(e) {
                 toastr.success(res.message);
                 row.find('td:last').html('<span class="badge badge-success">PO Encoded</span>');
                 reloadDataTable(stocktable);
+                reloadDataTable(itemspo);
                 reloadDataTable(inventorytable);
                 reloadDataTable(invInHistoryTable);
                 if (inventoryPurchaseRequestTable) {
