@@ -877,7 +877,7 @@ if (!isset($_SESSION['user_type']) ||
 		<div class="row">
 		
 		<?php if (isset($_SESSION['user_type']) && in_array($_SESSION['user_type'], ['Admin', 'Manager'], true)) { ?>
-		<div class="col-md-4">
+		<div class="col-12">
             <!-- general form elements -->
             <div class="card card-info">
               <div class="card-header">
@@ -891,7 +891,7 @@ if (!isset($_SESSION['user_type']) ||
 			</div> <!-- end add project form div -->
 		
 		
-		<div class="col-md-8">
+		<div class="col-12">
 		
 		<?php } else { ?>
 		<div class="col-md-12">
@@ -941,7 +941,7 @@ if (!isset($_SESSION['user_type']) ||
             </div>
             <!-- /.card -->
 			</div>
-			<!-- .col-md-8 -->
+			<!-- .col-12 -->
 		
 		</div> <!-- end row project details-->
 		
