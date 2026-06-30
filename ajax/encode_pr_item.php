@@ -2,6 +2,7 @@
 session_start();
 include_once('config.php');
 include_once('audit_helper.php');
+include_once('item_request_status_helper.php');
 
 header('Content-Type: application/json');
 
@@ -32,20 +33,11 @@ try {
     if (!in_array('unit_price', $poItemColumns, true)) {
         $pdo->exec("ALTER TABLE tbl_purchase_order_items ADD unit_price DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER po_qty");
     }
-    $prItemColumns = $pdo->query("SHOW COLUMNS FROM tbl_purchase_request_items")->fetchAll(PDO::FETCH_COLUMN);
-    if (!in_array('item_request_id', $prItemColumns, true)) {
-        $pdo->exec("ALTER TABLE tbl_purchase_request_items ADD item_request_id INT DEFAULT NULL AFTER pr_id");
-        $pdo->exec("CREATE INDEX idx_pr_items_item_request_id ON tbl_purchase_request_items (item_request_id)");
-    }
-    $pdo->exec("
-        UPDATE tbl_purchase_request_items
-        SET item_request_id = CAST(SUBSTRING(sku, 5) AS UNSIGNED)
-        WHERE item_request_id IS NULL
-          AND sku REGEXP '^REQ-[0-9]+$'
-    ");
+    ensure_item_request_link_schema($pdo);
 
     $pdo->exec("CREATE TABLE IF NOT EXISTS tbl_inventory_in (
         id INT AUTO_INCREMENT PRIMARY KEY,
+        po_item_id INT DEFAULT NULL,
         sku VARCHAR(100) NOT NULL,
         item_name VARCHAR(255) NOT NULL,
         quantity DECIMAL(12,2) NOT NULL,
@@ -62,6 +54,14 @@ try {
         INDEX idx_inventory_in_receipt_no (receipt_no),
         INDEX idx_inventory_in_po_code (po_code)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    $inventoryInColumns = $pdo->query("SHOW COLUMNS FROM tbl_inventory_in")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('po_item_id', $inventoryInColumns, true)) {
+        $pdo->exec("ALTER TABLE tbl_inventory_in ADD po_item_id INT DEFAULT NULL AFTER id");
+    }
+    $poItemIndex = $pdo->query("SHOW INDEX FROM tbl_inventory_in WHERE Key_name = 'uq_inventory_in_po_item'");
+    if (!$poItemIndex->fetch(PDO::FETCH_ASSOC)) {
+        $pdo->exec("CREATE UNIQUE INDEX uq_inventory_in_po_item ON tbl_inventory_in (po_item_id)");
+    }
 
     $pdo->beginTransaction();
 
@@ -88,6 +88,7 @@ try {
         INNER JOIN tbl_purchase_orders po ON po.po_id = poi.po_id
         WHERE pr.pr_id = ? AND poi.po_item_id = ?
         LIMIT 1
+        FOR UPDATE
     ");
     $stmt->execute([$prId, $poItemId]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -150,9 +151,10 @@ try {
     $dup = $pdo->prepare("
         SELECT COUNT(*)
         FROM tbl_inventory_in
-        WHERE sku = ? AND receipt_no = ? AND po_code = ?
+        WHERE po_item_id = ?
+           OR (po_item_id IS NULL AND sku = ? AND receipt_no = ? AND po_code = ?)
     ");
-    $dup->execute([$targetSku, $row['receipt_no'], $row['po_ref_no']]);
+    $dup->execute([$poItemId, $targetSku, $row['receipt_no'], $row['po_ref_no']]);
     if ((int)$dup->fetchColumn() > 0) {
         throw new RuntimeException('This item was already encoded for this receipt.');
     }
@@ -163,11 +165,12 @@ try {
 
     $insert = $pdo->prepare("
         INSERT INTO tbl_inventory_in
-            (sku, item_name, quantity, unit, unit_price, stock_before, stock_after, receipt_no, receipt_date, po_code, created_by)
+            (po_item_id, sku, item_name, quantity, unit, unit_price, stock_before, stock_after, receipt_no, receipt_date, po_code, created_by)
         VALUES
-            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
     $insert->execute([
+        $poItemId,
         $targetSku,
         $item['material_name'],
         $quantity,
@@ -221,14 +224,7 @@ try {
         $closeStmt = $pdo->prepare("UPDATE tbl_purchase_requests SET status = 'Encoded' WHERE pr_id = ?");
         $closeStmt->execute([$prId]);
 
-        $availableStmt = $pdo->prepare("
-            UPDATE item_requests ir
-            INNER JOIN tbl_purchase_request_items pri ON pri.item_request_id = ir.id
-            SET ir.status = 'Now available'
-            WHERE pri.pr_id = ?
-              AND ir.status = 'Ordered'
-        ");
-        $availableStmt->execute([$prId]);
+        sync_encoded_item_requests($pdo, $prId);
     }
 
     $pdo->commit();

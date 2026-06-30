@@ -2,6 +2,7 @@
 session_start();
 include_once('config.php');
 include_once('audit_helper.php');
+include_once('item_request_status_helper.php');
 
 header('Content-Type: application/json');
 
@@ -19,17 +20,7 @@ if ($prId <= 0) {
 }
 
 try {
-    $prItemColumns = $pdo->query("SHOW COLUMNS FROM tbl_purchase_request_items")->fetchAll(PDO::FETCH_COLUMN);
-    if (!in_array('item_request_id', $prItemColumns, true)) {
-        $pdo->exec("ALTER TABLE tbl_purchase_request_items ADD item_request_id INT DEFAULT NULL AFTER pr_id");
-        $pdo->exec("CREATE INDEX idx_pr_items_item_request_id ON tbl_purchase_request_items (item_request_id)");
-    }
-    $pdo->exec("
-        UPDATE tbl_purchase_request_items
-        SET item_request_id = CAST(SUBSTRING(sku, 5) AS UNSIGNED)
-        WHERE item_request_id IS NULL
-          AND sku REGEXP '^REQ-[0-9]+$'
-    ");
+    ensure_item_request_link_schema($pdo);
 
     $stmt = $pdo->prepare("SELECT pr_ref_no, status FROM tbl_purchase_requests WHERE pr_id = ? LIMIT 1");
     $stmt->execute([$prId]);
@@ -50,14 +41,7 @@ try {
     $update = $pdo->prepare("UPDATE tbl_purchase_requests SET status = 'Encoded' WHERE pr_id = ?");
     $update->execute([$prId]);
 
-    $availableStmt = $pdo->prepare("
-        UPDATE item_requests ir
-        INNER JOIN tbl_purchase_request_items pri ON pri.item_request_id = ir.id
-        SET ir.status = 'Now available'
-        WHERE pri.pr_id = ?
-          AND ir.status = 'Ordered'
-    ");
-    $availableStmt->execute([$prId]);
+    sync_encoded_item_requests($pdo, $prId);
 
     $pdo->commit();
 

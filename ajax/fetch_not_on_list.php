@@ -1,11 +1,15 @@
 <?php
 session_start();
 include_once('config.php');
+include_once('item_request_status_helper.php');
 header('Content-Type: application/json');
 
 $userType = $_SESSION['user_type'] ?? '';
 $userCode = $_SESSION['user_code'] ?? '';
 $username = $_SESSION['username'] ?? '';
+
+ensure_item_request_link_schema($pdo);
+sync_encoded_item_requests($pdo);
 
 $columns = $pdo->query("SHOW COLUMNS FROM item_requests")->fetchAll(PDO::FETCH_COLUMN);
 if (!in_array('request_qty', $columns, true)) {

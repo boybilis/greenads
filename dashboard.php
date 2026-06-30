@@ -6434,6 +6434,11 @@ $(document).on('click', '.encode-pr-item', function(e) {
         return;
     }
 
+    if (row.data('encoding') === true) {
+        return;
+    }
+    row.data('encoding', true);
+
     $.ajax({
         url: 'ajax/encode_pr_item.php',
         type: 'POST',
@@ -6472,6 +6477,11 @@ $(document).on('click', '.encode-pr-item', function(e) {
             console.error(xhr.responseText);
             toastr.error(xhr.responseJSON?.message || 'Failed to encode item.');
             row.find('td:last').html('<a href="#" class="encode-pr-item"><span class="badge badge-warning">Encode</span></a>');
+        },
+        complete: function() {
+            if (row.find('.encode-pr-item').length) {
+                row.data('encoding', false);
+            }
         }
     });
 });

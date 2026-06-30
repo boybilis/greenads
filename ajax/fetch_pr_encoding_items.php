@@ -30,6 +30,7 @@ if ($prId <= 0 && $poId <= 0) {
 try {
     $pdo->exec("CREATE TABLE IF NOT EXISTS tbl_inventory_in (
         id INT AUTO_INCREMENT PRIMARY KEY,
+        po_item_id INT DEFAULT NULL,
         sku VARCHAR(100) NOT NULL,
         item_name VARCHAR(255) NOT NULL,
         quantity DECIMAL(12,2) NOT NULL,
@@ -46,6 +47,10 @@ try {
         INDEX idx_inventory_in_receipt_no (receipt_no),
         INDEX idx_inventory_in_po_code (po_code)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    $inventoryInColumns = $pdo->query("SHOW COLUMNS FROM tbl_inventory_in")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('po_item_id', $inventoryInColumns, true)) {
+        $pdo->exec("ALTER TABLE tbl_inventory_in ADD po_item_id INT DEFAULT NULL AFTER id");
+    }
 
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS tbl_purchase_order_prs (
@@ -122,9 +127,11 @@ try {
             CASE WHEN EXISTS (
                 SELECT 1
                 FROM tbl_inventory_in ii
-                WHERE ii.sku = poi.sku
-                  AND ii.receipt_no = ?
-                  AND ii.po_code = ?
+                WHERE ii.po_item_id = poi.po_item_id
+                   OR (ii.po_item_id IS NULL
+                       AND ii.sku = poi.sku
+                       AND ii.receipt_no = ?
+                       AND ii.po_code = ?)
             ) THEN 1 ELSE 0 END AS encoded
         FROM tbl_purchase_order_items poi
         INNER JOIN tbl_purchase_request_items pri ON pri.pr_item_id = poi.pr_item_id
