@@ -922,16 +922,16 @@ if (!isset($_SESSION['user_type']) ||
                   <table class="table m-0" id="project-list">
     <thead>
         <tr>
+            <th>Action</th>
+            <th>Attachments</th>
+            <th>Approval</th>
+            <th>Status</th>
             <th>Project Name</th>
             <th>Project Manager</th>
             <th>Project Cost</th>
             <th>Description</th>
             <th>Start Date</th>
             <th>End Date</th>
-            <th>Approval</th>
-            <th>Status</th>
-            <th>Attachments</th>
-            <th>Action</th>
         </tr>
     </thead>
 
@@ -3658,6 +3658,71 @@ $(document).ready(function() {
             columns: [
                 {
                     data: null,
+                    orderable: false,
+                    render: function (data) {
+                        const isAdmin = "<?= $_SESSION['user_type'] ?? '' ?>" === 'Admin';
+                        const isManager = "<?= $_SESSION['user_type'] ?? '' ?>" === 'Manager';
+                        const currentUserCode = "<?= $_SESSION['user_code'] ?? '' ?>";
+                        const pendingApproval = parseInt(data.proj_approval_status, 10) !== 1;
+
+                        let actions = '';
+                        if (isAdmin && pendingApproval) {
+                            actions += `<button class="btn btn-sm btn-warning project-action-btn approve-project-btn mr-1 mb-1" data-id="${escapeHtml(data.proj_code)}" title="Approve project" aria-label="Approve project"><i class="fas fa-check" aria-hidden="true"></i></button>`;
+                        }
+                        if (isAdmin && !pendingApproval) {
+                            actions += `<button class="btn btn-sm btn-danger project-action-btn delete-project-btn mr-1 mb-1" data-id="${escapeHtml(data.proj_code)}" data-name="${escapeHtml(data.proj_name || data.proj_code)}" title="Delete project" aria-label="Delete project"><i class="fas fa-times" aria-hidden="true"></i></button>`;
+                        }
+                        if (isManager && pendingApproval && data.proj_mgr === currentUserCode) {
+                            actions += `<button class="btn btn-sm btn-secondary project-action-btn edit-project-btn mr-1 mb-1" data-id="${escapeHtml(data.proj_code)}" title="Edit project" aria-label="Edit project"><i class="fas fa-pen" aria-hidden="true"></i></button>`;
+                        }
+
+                        actions += `
+                            <button class="btn btn-sm btn-primary project-action-btn view-btn mr-1 mb-1" data-id="${escapeHtml(data.proj_code)}" title="View project" aria-label="View project">
+                                <i class="fas fa-search" aria-hidden="true"></i>
+                            </button>
+                            <button class="btn btn-sm btn-success project-action-btn upload-btn mr-1 mb-1" data-id="${escapeHtml(data.proj_code)}" title="Upload project file" aria-label="Upload project file">
+                                <i class="fas fa-arrow-up" aria-hidden="true"></i>
+                            </button>
+                            <button class="btn btn-sm btn-info project-action-btn qr-btn mr-1 mb-1" data-token="${escapeHtml(data.public_token)}" data-name="${escapeHtml(data.proj_name)}" title="Show QR code" aria-label="Show QR code">
+                                <i class="fas fa-qrcode" aria-hidden="true"></i>
+                            </button>
+                        `;
+
+                        return actions;
+                    }
+                },
+                {
+                    data: 'file_count',
+                    render: function (data) {
+                        if (data > 0) {
+                            return `<span class="badge bg-info">${data} file(s)</span>`;
+                        }
+                        return '<span class="text-muted">No files</span>';
+                    }
+                },
+                {
+                    data: 'proj_approval_status',
+                    render: function (data) {
+                        if (parseInt(data, 10) === 1) {
+                            return '<span class="badge bg-success">Approved</span>';
+                        }
+                        return '<span class="badge bg-warning text-dark">Pending Admin Approval</span>';
+                    }
+                },
+                {
+                    data: 'proj_status',
+                    render: function (data) {
+                        if (data == 0) {
+                            return '<span class="badge bg-warning">Ongoing</span>';
+                        }
+                        if (data == 1) {
+                            return '<span class="badge bg-success">Completed</span>';
+                        }
+                        return '<span class="badge bg-secondary">Unknown</span>';
+                    }
+                },
+                {
+                    data: null,
                     render: function (data) {
                         return '<strong>' + escapeHtml(data.proj_name || '-') + '</strong><br>' +
                             '<small class="text-muted">' + escapeHtml(data.proj_code || '-') + '</small>';
@@ -3686,73 +3751,7 @@ $(document).ready(function() {
                     }
                 },
                 { data: 'proj_sd' },
-                { data: 'proj_ed' },
-                {
-                    data: 'proj_approval_status',
-                    render: function (data) {
-                        if (parseInt(data, 10) === 1) {
-                            return '<span class="badge bg-success">Approved</span>';
-                        }
-                        return '<span class="badge bg-warning text-dark">Pending Admin Approval</span>';
-                    }
-                },
-                {
-                    data: 'proj_status',
-                    render: function (data) {
-                        if (data == 0) {
-                            return '<span class="badge bg-warning">Ongoing</span>';
-                        }
-                        if (data == 1) {
-                            return '<span class="badge bg-success">Completed</span>';
-                        }
-                        return '<span class="badge bg-secondary">Unknown</span>';
-                    }
-                },
-                {
-                    data: 'file_count',
-                    render: function (data) {
-                        if (data > 0) {
-                            return `<span class="badge bg-info">${data} file(s)</span>`;
-                        }
-                        return '<span class="text-muted">No files</span>';
-                    }
-                },
-                {
-                    data: null,
-                    orderable: false,
-                    render: function (data) {
-                        const isAdmin = "<?= $_SESSION['user_type'] ?? '' ?>" === 'Admin';
-                        const isManager = "<?= $_SESSION['user_type'] ?? '' ?>" === 'Manager';
-                        const currentUserCode = "<?= $_SESSION['user_code'] ?? '' ?>";
-                        const pendingApproval = parseInt(data.proj_approval_status, 10) !== 1;
-
-                        let actions = '';
-                        if (isAdmin && pendingApproval) {
-                            actions += `<button class="btn btn-sm btn-warning project-action-btn approve-project-btn mr-1 mb-1" data-id="${escapeHtml(data.proj_code)}" title="Approve project" aria-label="Approve project"><i class="fas fa-check" aria-hidden="true"></i></button>`;
-                        }
-                        if (isAdmin && !pendingApproval) {
-                            actions += `<button class="btn btn-sm btn-danger project-action-btn delete-project-btn mr-1 mb-1" data-id="${escapeHtml(data.proj_code)}" data-name="${escapeHtml(data.proj_name || data.proj_code)}" title="Delete project" aria-label="Delete project"><i class="fas fa-times" aria-hidden="true"></i></button>`;
-                        }
-                        if (isManager && pendingApproval && data.proj_mgr === currentUserCode) {
-                            actions += `<button class="btn btn-sm btn-secondary project-action-btn edit-project-btn mr-1 mb-1" data-id="${escapeHtml(data.proj_code)}" title="Edit project" aria-label="Edit project"><i class="fas fa-pen" aria-hidden="true"></i></button>`;
-                        }
-
-                        actions += `
-                            <button class="btn btn-sm btn-primary project-action-btn view-btn mr-1 mb-1" data-id="${escapeHtml(data.proj_code)}" title="View project" aria-label="View project">
-                                <i class="fas fa-search" aria-hidden="true"></i>
-                            </button>
-
-                            <button class="btn btn-sm btn-success project-action-btn upload-btn mr-1 mb-1" data-id="${escapeHtml(data.proj_code)}" title="Upload project file" aria-label="Upload project file">
-                                <i class="fas fa-arrow-up" aria-hidden="true"></i>
-                            </button>
-                            <button class="btn btn-sm btn-info project-action-btn qr-btn mr-1 mb-1" data-token="${escapeHtml(data.public_token)}" data-name="${escapeHtml(data.proj_name)}" title="Show QR code" aria-label="Show QR code">
-                                <i class="fas fa-qrcode" aria-hidden="true"></i>
-                            </button>
-                        `;
-
-                        return actions;
-                    }
-                }
+                { data: 'proj_ed' }
             ],
             rowCallback: function (row, data) {
                 $(row).removeClass('table-warning table-success pending-approval-row');
