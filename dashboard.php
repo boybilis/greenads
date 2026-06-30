@@ -912,7 +912,6 @@ if (!isset($_SESSION['user_type']) ||
                   <table class="table m-0" id="project-list">
     <thead>
         <tr>
-            <th>Project Code</th>
             <th>Project Name</th>
             <th>Project Manager</th>
             <th>Project Cost</th>
@@ -3647,8 +3646,13 @@ $(document).ready(function() {
                 }
             },
             columns: [
-                { data: 'proj_code' },
-                { data: 'proj_name' },
+                {
+                    data: null,
+                    render: function (data) {
+                        return '<strong>' + escapeHtml(data.proj_name || '-') + '</strong><br>' +
+                            '<small class="text-muted">' + escapeHtml(data.proj_code || '-') + '</small>';
+                    }
+                },
                 {
                     data: null,
                     render: function (data) {
