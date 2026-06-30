@@ -3720,6 +3720,9 @@ $(document).ready(function() {
                         if (isAdmin && pendingApproval) {
                             actions += `<button class="btn btn-sm btn-warning approve-project-btn mr-1" data-id="${data.proj_code}">Approve</button>`;
                         }
+                        if (isAdmin && !pendingApproval) {
+                            actions += `<button class="btn btn-sm btn-danger delete-project-btn mr-1" data-id="${data.proj_code}" data-name="${escapeHtml(data.proj_name || data.proj_code)}">Delete</button>`;
+                        }
                         if (isManager && pendingApproval && data.proj_mgr === currentUserCode) {
                             actions += `<button class="btn btn-sm btn-secondary edit-project-btn mr-1" data-id="${data.proj_code}">Edit</button>`;
                         }
@@ -5117,6 +5120,49 @@ $(document).on('click', '.approve-project-btn', function() {
         },
         error: function() {
             toastr.error('Approval failed.');
+        }
+    });
+});
+
+$(document).on('click', '.delete-project-btn', function() {
+    const $button = $(this);
+    const projCode = String($button.data('id') || '');
+    const projectName = String($button.data('name') || projCode);
+    if (!projCode) {
+        return;
+    }
+
+    const confirmed = window.confirm(
+        'Permanently delete "' + projectName + '"?\n\n' +
+        'This will delete its MR, PR, PO, transaction items, approvals, and files. ' +
+        'Inventory quantities will be reversed automatically. This cannot be undone.'
+    );
+    if (!confirmed) {
+        return;
+    }
+
+    $.ajax({
+        url: 'ajax/delete_project.php',
+        type: 'POST',
+        dataType: 'json',
+        data: { proj_code: projCode },
+        beforeSend: function() {
+            $button.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+        },
+        success: function(res) {
+            if (res.status === 'success') {
+                toastr.success(res.message);
+                reloadDataTable(projecttable);
+            } else {
+                toastr.error(res.message || 'Project deletion failed.');
+            }
+        },
+        error: function(xhr) {
+            const response = xhr.responseJSON || {};
+            toastr.error(response.message || 'Project deletion failed. No changes were applied.');
+        },
+        complete: function() {
+            $button.prop('disabled', false).text('Delete');
         }
     });
 });
