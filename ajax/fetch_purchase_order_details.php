@@ -37,6 +37,10 @@ try {
     if (!in_array('pr_ref_no', $poItemColumns, true)) {
         $pdo->exec("ALTER TABLE tbl_purchase_order_items ADD pr_ref_no VARCHAR(30) DEFAULT NULL AFTER pr_item_id");
     }
+    $poColumns = $pdo->query("SHOW COLUMNS FROM tbl_purchase_orders")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('approval_status', $poColumns, true)) {
+        $pdo->exec("ALTER TABLE tbl_purchase_orders ADD approval_status VARCHAR(30) NOT NULL DEFAULT 'Pending'");
+    }
 
     $headerStmt = $pdo->prepare("
         SELECT
@@ -44,6 +48,7 @@ try {
             po.po_ref_no,
             po.po_date,
             po.created_by,
+            COALESCE(po.approval_status, 'Pending') AS approval_status,
             COALESCE(GROUP_CONCAT(DISTINCT popr.pr_ref_no ORDER BY popr.pr_id SEPARATOR ', '), pr.pr_ref_no) AS pr_ref_no,
             s.supplier_id,
             s.supplier_name,
@@ -56,7 +61,7 @@ try {
         LEFT JOIN tbl_purchase_order_prs popr ON popr.po_id = po.po_id
         LEFT JOIN tbl_suppliers s ON s.supplier_id = po.supplier_id
         WHERE po.po_id = ?
-        GROUP BY po.po_id, po.po_ref_no, po.po_date, po.created_by, pr.pr_ref_no, s.supplier_id, s.supplier_name, s.supplier_owner, s.address, s.contact_no, s.email
+        GROUP BY po.po_id, po.po_ref_no, po.po_date, po.created_by, po.approval_status, pr.pr_ref_no, s.supplier_id, s.supplier_name, s.supplier_owner, s.address, s.contact_no, s.email
     ");
     $headerStmt->execute([$poId]);
     $header = $headerStmt->fetch(PDO::FETCH_ASSOC);
@@ -116,6 +121,7 @@ try {
             'po_date' => $header['po_date'],
             'pr_ref_no' => $header['pr_ref_no'],
             'created_by' => $header['created_by'],
+            'approval_status' => $header['approval_status'],
             'supplier' => [
                 'supplier_id' => (int)$header['supplier_id'],
                 'supplier_name' => $header['supplier_name'],
