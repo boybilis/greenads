@@ -51,7 +51,7 @@ try {
             o.or_no,
             o.or_date,
             o.proj_code,
-            o.dept_code,
+            p.proj_name,
             o.prepared_by,
             o.remarks,
             o.grand_total
@@ -68,7 +68,7 @@ try {
             'or_no' => htmlspecialchars($row['or_no'] ?? ''),
             'or_date' => !empty($row['or_date']) ? date('M d, Y', strtotime($row['or_date'])) : '-',
             'proj_code' => htmlspecialchars($row['proj_code'] ?? ''),
-            'dept_code' => htmlspecialchars($row['dept_code'] ?? ''),
+            'proj_name' => htmlspecialchars($row['proj_name'] ?? ''),
             'prepared_by' => htmlspecialchars($row['prepared_by'] ?? ''),
             'remarks' => htmlspecialchars($row['remarks'] ?: '-'),
             'grand_total' => number_format((float)$row['grand_total'], 2)

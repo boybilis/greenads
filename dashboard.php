@@ -1775,7 +1775,7 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 						<th>MR No.</th>
 						<th>MR Date</th>
 						<th>Project Code</th>
-						<th>Department</th>
+						<th>Project Name</th>
 						<th>Prepared By</th>
 						<th>Remarks</th>
 						<th>Grand Total</th>
@@ -3227,7 +3227,7 @@ $(document).ready(function() {
                     { data: 'or_no' },
                     { data: 'or_date' },
                     { data: 'proj_code' },
-                    { data: 'dept_code' },
+                    { data: 'proj_name' },
                     { data: 'prepared_by' },
                     { data: 'remarks' },
                     { data: 'grand_total' }
