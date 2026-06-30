@@ -69,6 +69,7 @@ if (!$po) {
 if (($po['approval_status'] ?? 'Pending') !== 'Approved' && (($_SESSION['user_type'] ?? '') !== 'Admin')) {
     die('This PO is pending admin approval.');
 }
+$isApproved = strcasecmp((string)($po['approval_status'] ?? 'Pending'), 'Approved') === 0;
 
 $itemStmt = $pdo->prepare("
     SELECT
@@ -123,7 +124,9 @@ foreach ($items as $item) {
         .center { text-align: center; }
         .right { text-align: right; }
         .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-top: 42px; }
-        .signature-line { border-top: 1px solid #111; padding-top: 6px; text-align: center; }
+        .signature-block { align-items: center; display: flex; flex-direction: column; justify-content: flex-end; min-height: 130px; }
+        .approval-signature { display: block; width: 100px; height: 100px; object-fit: contain; }
+        .signature-line { border-top: 1px solid #111; padding-top: 6px; text-align: center; width: 100%; }
         @media print {
             .toolbar { display: none; }
             body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -220,8 +223,15 @@ foreach ($items as $item) {
         </table>
 
         <div class="signatures">
-            <div class="signature-line">Prepared By</div>
-            <div class="signature-line">Approved By</div>
+            <div class="signature-block">
+                <div class="signature-line">Prepared By</div>
+            </div>
+            <div class="signature-block">
+                <?php if ($isApproved) { ?>
+                    <img class="approval-signature" src="dist/img/sir%20bong%20e%20signtransparent.png" alt="Admin approval signature">
+                <?php } ?>
+                <div class="signature-line">Approved By</div>
+            </div>
         </div>
     </div>
 </body>
