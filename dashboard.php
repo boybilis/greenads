@@ -105,6 +105,16 @@ table.dataTable td {
 tr.pending-approval-row td {
   background-color: #fff8db !important;
 }
+
+.project-action-btn {
+  align-items: center;
+  border-radius: 50%;
+  display: inline-flex;
+  height: 32px;
+  justify-content: center;
+  padding: 0;
+  width: 32px;
+}
   </style>
   <style>
   .item-dropdown {
@@ -3718,25 +3728,25 @@ $(document).ready(function() {
 
                         let actions = '';
                         if (isAdmin && pendingApproval) {
-                            actions += `<button class="btn btn-sm btn-warning approve-project-btn mr-1" data-id="${data.proj_code}">Approve</button>`;
+                            actions += `<button class="btn btn-sm btn-warning project-action-btn approve-project-btn mr-1 mb-1" data-id="${escapeHtml(data.proj_code)}" title="Approve project" aria-label="Approve project"><i class="fas fa-check" aria-hidden="true"></i></button>`;
                         }
                         if (isAdmin && !pendingApproval) {
-                            actions += `<button class="btn btn-sm btn-danger delete-project-btn mr-1" data-id="${data.proj_code}" data-name="${escapeHtml(data.proj_name || data.proj_code)}">Delete</button>`;
+                            actions += `<button class="btn btn-sm btn-danger project-action-btn delete-project-btn mr-1 mb-1" data-id="${escapeHtml(data.proj_code)}" data-name="${escapeHtml(data.proj_name || data.proj_code)}" title="Delete project" aria-label="Delete project"><i class="fas fa-times" aria-hidden="true"></i></button>`;
                         }
                         if (isManager && pendingApproval && data.proj_mgr === currentUserCode) {
-                            actions += `<button class="btn btn-sm btn-secondary edit-project-btn mr-1" data-id="${data.proj_code}">Edit</button>`;
+                            actions += `<button class="btn btn-sm btn-secondary project-action-btn edit-project-btn mr-1 mb-1" data-id="${escapeHtml(data.proj_code)}" title="Edit project" aria-label="Edit project"><i class="fas fa-pen" aria-hidden="true"></i></button>`;
                         }
 
                         actions += `
-                            <button class="btn btn-sm btn-primary view-btn" data-id="${data.proj_code}">
-                                View
+                            <button class="btn btn-sm btn-primary project-action-btn view-btn mr-1 mb-1" data-id="${escapeHtml(data.proj_code)}" title="View project" aria-label="View project">
+                                <i class="fas fa-search" aria-hidden="true"></i>
                             </button>
 
-                            <button class="btn btn-sm btn-success upload-btn" data-id="${data.proj_code}">
-                                Upload
+                            <button class="btn btn-sm btn-success project-action-btn upload-btn mr-1 mb-1" data-id="${escapeHtml(data.proj_code)}" title="Upload project file" aria-label="Upload project file">
+                                <i class="fas fa-arrow-up" aria-hidden="true"></i>
                             </button>
-                            <button class="btn btn-sm btn-info qr-btn" data-token="${data.public_token}" data-name="${data.proj_name}">
-                                QR-Code
+                            <button class="btn btn-sm btn-info project-action-btn qr-btn mr-1 mb-1" data-token="${escapeHtml(data.public_token)}" data-name="${escapeHtml(data.proj_name)}" title="Show QR code" aria-label="Show QR code">
+                                <i class="fas fa-qrcode" aria-hidden="true"></i>
                             </button>
                         `;
 
@@ -5162,7 +5172,7 @@ $(document).on('click', '.delete-project-btn', function() {
             toastr.error(response.message || 'Project deletion failed. No changes were applied.');
         },
         complete: function() {
-            $button.prop('disabled', false).text('Delete');
+            $button.prop('disabled', false).html('<i class="fas fa-times" aria-hidden="true"></i>');
         }
     });
 });
