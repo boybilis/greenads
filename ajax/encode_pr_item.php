@@ -104,7 +104,8 @@ try {
         throw new RuntimeException('PO receipt no. and received date are required before encoding.');
     }
 
-    $targetSku = $row['sku'];
+    $originalSku = $row['sku'];
+    $targetSku = $originalSku;
     $isRequestedSku = stripos($row['sku'], 'REQ') === 0;
 
     if ($isRequestedSku) {
@@ -112,7 +113,14 @@ try {
             throw new RuntimeException('Please add item details first before encoding this requested item.');
         }
         $targetSku = $inventorySku;
+    } elseif ($inventorySku !== '') {
+        $originalExistsStmt = $pdo->prepare("SELECT COUNT(*) FROM tbl_items WHERE sku = ?");
+        $originalExistsStmt->execute([$originalSku]);
+        if ((int)$originalExistsStmt->fetchColumn() === 0) {
+            $targetSku = $inventorySku;
+        }
     }
+    $usesReplacementSku = $targetSku !== $originalSku;
 
     $itemStmt = $pdo->prepare("
         SELECT sku, material_name, material_type, color, quantity, unit, unit_price
@@ -180,7 +188,7 @@ try {
     ");
     $update->execute([$quantity, $targetSku]);
 
-    if ($isRequestedSku && $targetSku !== $row['sku']) {
+    if ($isRequestedSku || $usesReplacementSku) {
         $updatePoItem = $pdo->prepare("
             UPDATE tbl_purchase_order_items
             SET sku = ?, item_name = ?, material_type = ?, color = ?, unit = ?
@@ -225,7 +233,7 @@ try {
 
     $pdo->commit();
 
-    audit_log($pdo, 'ENCODE_ITEM', 'Purchase Request', $row['pr_ref_no'], 'Encoded ' . $targetSku . ($targetSku !== $row['sku'] ? ' from requested SKU ' . $row['sku'] : '') . '; quantity: +' . $quantity . '; receipt_no: ' . $row['receipt_no'] . '; po_code: ' . $row['po_ref_no'] . ($remaining === 0 ? '; status: "PO Fulfilled" -> "Encoded"' : ''));
+    audit_log($pdo, 'ENCODE_ITEM', 'Purchase Request', $row['pr_ref_no'], 'Encoded ' . $targetSku . ($usesReplacementSku ? ' replacing SKU ' . $originalSku : '') . '; quantity: +' . $quantity . '; receipt_no: ' . $row['receipt_no'] . '; po_code: ' . $row['po_ref_no'] . ($remaining === 0 ? '; status: "PO Fulfilled" -> "Encoded"' : ''));
 
     echo json_encode([
         'status' => 'success',

@@ -118,6 +118,7 @@ try {
             poi.po_qty,
             poi.unit,
             COALESCE(poi.unit_price, 0) AS unit_price,
+            CASE WHEN existing_item.sku IS NULL THEN 0 ELSE 1 END AS item_exists,
             CASE WHEN EXISTS (
                 SELECT 1
                 FROM tbl_inventory_in ii
@@ -127,6 +128,7 @@ try {
             ) THEN 1 ELSE 0 END AS encoded
         FROM tbl_purchase_order_items poi
         INNER JOIN tbl_purchase_request_items pri ON pri.pr_item_id = poi.pr_item_id
+        LEFT JOIN tbl_items existing_item ON existing_item.sku = poi.sku
         WHERE poi.po_id = ?
           AND pri.pr_id = ?
         ORDER BY poi.item_name ASC, poi.sku ASC
@@ -160,7 +162,7 @@ try {
                 'po_qty' => (float)$item['po_qty'],
                 'unit' => $item['unit'],
                 'unit_price' => (float)$item['unit_price'],
-                'item_exists' => stripos((string)$item['sku'], 'REQ') !== 0,
+                'item_exists' => (int)($item['item_exists'] ?? 0) === 1,
                 'encoded' => (int)($item['encoded'] ?? 0) === 1
             ];
         }, $items)

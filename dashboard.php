@@ -6410,7 +6410,7 @@ $(document).on('click', '.encode-pr-item', function(e) {
     const item = encodePrItemsCache[poItemId] || {};
     const itemSku = String(item.sku || '');
 
-    if (itemSku.toUpperCase().indexOf('REQ') === 0 && item.item_exists !== true && !item.inventory_sku) {
+    if (item.item_exists !== true && !item.inventory_sku) {
         pendingEncodeAfterProductSave = { row: row, poItemId: poItemId };
         $('#productForm')[0].reset();
         $('#id').val('');
@@ -6428,7 +6428,9 @@ $(document).on('click', '.encode-pr-item', function(e) {
         $('#reorder_level').val(10);
         $('#productModal').modal('show');
         $('#material_name, #color, #gsm').trigger('input');
-        toastr.info('Add this requested item first. The SKU will be auto-generated.');
+        toastr.info(itemSku.toUpperCase().indexOf('REQ') === 0
+            ? 'Add this requested item first. The SKU will be auto-generated.'
+            : 'This inventory item no longer exists. Recreate it before encoding.');
         return;
     }
 
