@@ -915,7 +915,6 @@ if (!isset($_SESSION['user_type']) ||
             <th>Project Code</th>
             <th>Project Name</th>
             <th>Project Manager</th>
-            <th>Project Owner</th>
             <th>Project Cost</th>
             <th>Description</th>
             <th>Start Date</th>
@@ -3650,8 +3649,13 @@ $(document).ready(function() {
             columns: [
                 { data: 'proj_code' },
                 { data: 'proj_name' },
-                { data: 'proj_mgr' },
-                { data: 'proj_owner' },
+                {
+                    data: null,
+                    render: function (data) {
+                        return '<strong>' + escapeHtml(data.proj_owner || '-') + '</strong><br>' +
+                            '<small class="text-muted">' + escapeHtml(data.proj_mgr || '-') + '</small>';
+                    }
+                },
                 {
                     data: 'proj_cost',
                     render: function (data) {
