@@ -1972,6 +1972,7 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 						<th>Total Finished Project</th>
 						<th>Total Overall Project</th>
 						<th>Total Project Cost</th>
+						<th>Total Claimed MR Amount</th>
 					  </tr>
 					</thead>
 					<tbody></tbody>
@@ -1982,6 +1983,7 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 						<th id="adminManagerFinishedTotal">0</th>
 						<th id="adminManagerProjectTotal">0</th>
 						<th id="adminManagerCostTotal">0.00</th>
+						<th id="adminManagerClaimedMrTotal">0.00</th>
 					  </tr>
 					</tfoot>
 				  </table>
@@ -3358,6 +3360,7 @@ $(document).ready(function() {
                         $('#adminManagerFinishedTotal').text(summary.finished_projects || 0);
                         $('#adminManagerProjectTotal').text(summary.total_projects || 0);
                         $('#adminManagerCostTotal').text(summary.total_project_cost || '0.00');
+                        $('#adminManagerClaimedMrTotal').text(summary.claimed_mr_amount || '0.00');
                         return json.data || [];
                     }
                 },
@@ -3374,6 +3377,15 @@ $(document).ready(function() {
                         render: function(data, type, row) {
                             if (type === 'display' || type === 'filter') {
                                 return row.total_project_cost || '0.00';
+                            }
+                            return parseFloat(data || 0);
+                        }
+                    },
+                    {
+                        data: 'claimed_mr_amount_raw',
+                        render: function(data, type, row) {
+                            if (type === 'display' || type === 'filter') {
+                                return row.claimed_mr_amount || '0.00';
                             }
                             return parseFloat(data || 0);
                         }

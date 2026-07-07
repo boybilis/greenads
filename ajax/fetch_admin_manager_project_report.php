@@ -35,20 +35,36 @@ try {
         SELECT
             u.user_code,
             u.user_name,
-            COALESCE(SUM(CASE WHEN p.proj_status = 0 THEN 1 ELSE 0 END), 0) AS ongoing_projects,
-            COALESCE(SUM(CASE WHEN p.proj_status = 1 THEN 1 ELSE 0 END), 0) AS finished_projects,
-            COUNT(p.proj_code) AS total_projects,
-            COALESCE(SUM(CAST(REPLACE(p.proj_cost, ',', '') AS DECIMAL(15,2))), 0) AS total_project_cost
+            COALESCE(ps.ongoing_projects, 0) AS ongoing_projects,
+            COALESCE(ps.finished_projects, 0) AS finished_projects,
+            COALESCE(ps.total_projects, 0) AS total_projects,
+            COALESCE(ps.total_project_cost, 0) AS total_project_cost,
+            COALESCE(ms.claimed_mr_amount, 0) AS claimed_mr_amount
         FROM tbl_user u
-        LEFT JOIN tbl_project p
-            ON p.proj_mgr = u.user_code
-            AND p.proj_sd >= ?
-            AND p.proj_sd < ?
+        LEFT JOIN (
+            SELECT
+                proj_mgr,
+                SUM(CASE WHEN proj_status = 0 THEN 1 ELSE 0 END) AS ongoing_projects,
+                SUM(CASE WHEN proj_status = 1 THEN 1 ELSE 0 END) AS finished_projects,
+                COUNT(proj_code) AS total_projects,
+                COALESCE(SUM(CAST(REPLACE(proj_cost, ',', '') AS DECIMAL(15,2))), 0) AS total_project_cost
+            FROM tbl_project
+            WHERE proj_sd >= ? AND proj_sd < ?
+            GROUP BY proj_mgr
+        ) ps ON ps.proj_mgr = u.user_code
+        LEFT JOIN (
+            SELECT
+                p.proj_mgr,
+                COALESCE(SUM(CAST(REPLACE(o.grand_total, ',', '') AS DECIMAL(15,2))), 0) AS claimed_mr_amount
+            FROM tbl_or o
+            INNER JOIN tbl_project p ON p.proj_code = o.proj_code
+            WHERE o.or_date >= ? AND o.or_date < ? AND o.or_status = 3
+            GROUP BY p.proj_mgr
+        ) ms ON ms.proj_mgr = u.user_code
         WHERE u.user_type = 'Manager'
-        GROUP BY u.user_code, u.user_name
         ORDER BY u.user_name ASC, u.user_code ASC
     ");
-    $stmt->execute([$startDate, $endDate]);
+    $stmt->execute([$startDate, $endDate, $startDate, $endDate]);
 
     $rows = [];
     $summary = [
@@ -56,7 +72,9 @@ try {
         'finished_projects' => 0,
         'total_projects' => 0,
         'total_project_cost_raw' => 0.0,
-        'total_project_cost' => '0.00'
+        'total_project_cost' => '0.00',
+        'claimed_mr_amount_raw' => 0.0,
+        'claimed_mr_amount' => '0.00'
     ];
 
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
@@ -64,11 +82,13 @@ try {
         $finished = (int)$row['finished_projects'];
         $totalProjects = (int)$row['total_projects'];
         $projectCost = (float)$row['total_project_cost'];
+        $claimedMrAmount = (float)$row['claimed_mr_amount'];
 
         $summary['ongoing_projects'] += $ongoing;
         $summary['finished_projects'] += $finished;
         $summary['total_projects'] += $totalProjects;
         $summary['total_project_cost_raw'] += $projectCost;
+        $summary['claimed_mr_amount_raw'] += $claimedMrAmount;
 
         $rows[] = [
             'manager_code' => htmlspecialchars((string)$row['user_code']),
@@ -77,11 +97,14 @@ try {
             'finished_projects' => $finished,
             'total_projects' => $totalProjects,
             'total_project_cost_raw' => $projectCost,
-            'total_project_cost' => number_format($projectCost, 2)
+            'total_project_cost' => number_format($projectCost, 2),
+            'claimed_mr_amount_raw' => $claimedMrAmount,
+            'claimed_mr_amount' => number_format($claimedMrAmount, 2)
         ];
     }
 
     $summary['total_project_cost'] = number_format((float)$summary['total_project_cost_raw'], 2);
+    $summary['claimed_mr_amount'] = number_format((float)$summary['claimed_mr_amount_raw'], 2);
 
     echo json_encode([
         'data' => $rows,
