@@ -286,6 +286,14 @@ if (!isset($_SESSION['user_type']) ||
                 </a>
               </li>
               <?php } ?>
+              <?php if ($sidebarUserType === 'Admin') { ?>
+              <li class="nav-item">
+                <a href="#" data-target="admin_report" class="nav-link" id="showAdminReport">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>Admin</p>
+                </a>
+              </li>
+              <?php } ?>
             </ul>
           </li>
 		  <?php } ?>
@@ -1898,6 +1906,96 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 	</div>
 	</section>
 	
+	<?php if (isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'Admin') { ?>
+	<section class="content" id="admin_report">
+	 <div class="container-fluid">
+	  <div class="content-header">
+      <div class="container-fluid">
+        <div class="row mb-2">
+          <div class="col-sm-6">
+            <h1 class="m-0 text-dark">Admin Reports</h1>
+          </div>
+          <div class="col-sm-6">
+            <ol class="breadcrumb float-sm-right">
+              <li class="breadcrumb-item"><a href="dashboard">Home</a></li>
+              <li class="breadcrumb-item active">Admin Reports</li>
+            </ol>
+          </div>
+        </div>
+		<hr>
+
+		<div class="row">
+		  <div class="col-md-12">
+			<div class="card">
+			  <div class="card-header border-primary">
+				<h3 class="card-title">Admin Report Center</h3>
+			  </div>
+			  <div class="card-body">
+				<div class="row">
+				  <div class="col-md-3">
+					<div class="form-group">
+					  <label>Month</label>
+					  <select id="adminReportMonth" class="form-control">
+						<?php for ($m = 1; $m <= 12; $m++) { ?>
+						  <option value="<?= $m; ?>" <?= ((int)date('n') === $m) ? 'selected' : ''; ?>>
+							<?= date('F', mktime(0, 0, 0, $m, 1)); ?>
+						  </option>
+						<?php } ?>
+					  </select>
+					</div>
+				  </div>
+				  <div class="col-md-3">
+					<div class="form-group">
+					  <label>Year</label>
+					  <select id="adminReportYear" class="form-control">
+						<?php for ($y = (int)date('Y') - 5; $y <= (int)date('Y') + 1; $y++) { ?>
+						  <option value="<?= $y; ?>" <?= ((int)date('Y') === $y) ? 'selected' : ''; ?>>
+							<?= $y; ?>
+						  </option>
+						<?php } ?>
+					  </select>
+					</div>
+				  </div>
+				  <div class="col-md-3 d-flex align-items-end">
+					<div class="form-group w-100">
+					  <button type="button" class="btn btn-primary btn-block" id="reloadAdminManagerReport">Load Report</button>
+					</div>
+				  </div>
+				</div>
+
+				<div class="table-responsive">
+				  <table class="table table-bordered table-striped m-0" id="admin-manager-report">
+					<thead>
+					  <tr>
+						<th>Name</th>
+						<th>Total Ongoing Project</th>
+						<th>Total Finished Project</th>
+						<th>Total Overall Project</th>
+						<th>Total Project Cost</th>
+					  </tr>
+					</thead>
+					<tbody></tbody>
+					<tfoot>
+					  <tr>
+						<th class="text-right">Overall Total</th>
+						<th id="adminManagerOngoingTotal">0</th>
+						<th id="adminManagerFinishedTotal">0</th>
+						<th id="adminManagerProjectTotal">0</th>
+						<th id="adminManagerCostTotal">0.00</th>
+					  </tr>
+					</tfoot>
+				  </table>
+				</div>
+			  </div>
+			</div>
+		  </div>
+		</div>
+      </div>
+    </div>
+	</div>
+	</section>
+	<?php } ?>
+	
 	
 	
 	<section class="content" id="setting">
@@ -3041,7 +3139,7 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <script src="dist/js/pages/dashboard2.js"></script>
 
 <script>
-let ortable, itemspo, stocktable, inventorytable, invInHistoryTable, invOutHistoryTable, inventoryMonthlySummaryTable, projecttable, projectMrReportTable, supplierTable, purchaseRequestTable, inventoryPurchaseRequestTable, purchaseOrderTable, userTable, auditLogTable;
+let ortable, itemspo, stocktable, inventorytable, invInHistoryTable, invOutHistoryTable, inventoryMonthlySummaryTable, projecttable, projectMrReportTable, adminManagerReportTable, supplierTable, purchaseRequestTable, inventoryPurchaseRequestTable, purchaseOrderTable, userTable, auditLogTable;
 let myGeneratedPrTable;
 let encodePrItemsCache = {};
 let pendingEncodeAfterProductSave = null;
@@ -3239,6 +3337,47 @@ $(document).ready(function() {
                     { data: 'prepared_by' },
                     { data: 'remarks' },
                     { data: 'grand_total' }
+                ]
+            });
+        }
+    }
+
+    function initAdminReportSection() {
+        if (!adminManagerReportTable && $('#admin-manager-report').length) {
+            adminManagerReportTable = $('#admin-manager-report').DataTable({
+                ajax: {
+                    url: 'ajax/fetch_admin_manager_project_report.php',
+                    type: 'GET',
+                    data: function(d) {
+                        d.month = $('#adminReportMonth').val();
+                        d.year = $('#adminReportYear').val();
+                    },
+                    dataSrc: function(json) {
+                        let summary = json.summary || {};
+                        $('#adminManagerOngoingTotal').text(summary.ongoing_projects || 0);
+                        $('#adminManagerFinishedTotal').text(summary.finished_projects || 0);
+                        $('#adminManagerProjectTotal').text(summary.total_projects || 0);
+                        $('#adminManagerCostTotal').text(summary.total_project_cost || '0.00');
+                        return json.data || [];
+                    }
+                },
+                responsive: true,
+                autoWidth: false,
+                ordering: true,
+                columns: [
+                    { data: 'manager_name' },
+                    { data: 'ongoing_projects' },
+                    { data: 'finished_projects' },
+                    { data: 'total_projects' },
+                    {
+                        data: 'total_project_cost_raw',
+                        render: function(data, type, row) {
+                            if (type === 'display' || type === 'filter') {
+                                return row.total_project_cost || '0.00';
+                            }
+                            return parseFloat(data || 0);
+                        }
+                    }
                 ]
             });
         }
@@ -3858,6 +3997,10 @@ $(document).ready(function() {
                 initInventoryReportSection();
                 if (refresh) reloadDataTable(inventoryMonthlySummaryTable);
                 break;
+            case 'admin_report':
+                initAdminReportSection();
+                if (refresh) reloadDataTable(adminManagerReportTable);
+                break;
             case 'setting':
                 initSettingSection();
                 if (refresh) {
@@ -3875,6 +4018,7 @@ $(document).ready(function() {
     window.initOrderSection = initOrderSection;
     window.initInventorySection = initInventorySection;
     window.initInventoryReportSection = initInventoryReportSection;
+    window.initAdminReportSection = initAdminReportSection;
     window.initReportSection = initReportSection;
     window.initPurchasingSection = initPurchasingSection;
     window.initSettingSection = initSettingSection;
@@ -3925,6 +4069,11 @@ $(document).ready(function() {
     $('#reloadInventoryMonthlyReport, #inventoryReportMonth, #inventoryReportYear').on('click change', function() {
         initInventoryReportSection();
         reloadDataTable(inventoryMonthlySummaryTable, true);
+    });
+
+    $('#reloadAdminManagerReport, #adminReportMonth, #adminReportYear').on('click change', function() {
+        initAdminReportSection();
+        reloadDataTable(adminManagerReportTable, true);
     });
 
 });
