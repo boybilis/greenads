@@ -2315,6 +2315,87 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 			</div>
 		  </div>
 		</div>
+
+		<?php if (($_SESSION['user_type'] ?? '') === 'Manager') { ?>
+		<div class="row">
+		  <div class="col-md-12">
+			<div class="card">
+			  <div class="card-header border-primary">
+				<h3 class="card-title">Monthly Project Costing</h3>
+			  </div>
+			  <div class="card-body p-3">
+				<div class="row">
+				  <div class="col-md-4">
+					<div class="form-group">
+					  <label>Project</label>
+					  <select id="managerProjectReportProjCode" class="form-control">
+						<option value="">All My Projects</option>
+						<?php foreach ($reportProjects as $project): ?>
+						  <option value="<?= htmlspecialchars($project['proj_code']); ?>">
+							<?= htmlspecialchars($project['proj_code'] . ' : ' . $project['proj_name']); ?>
+						  </option>
+						<?php endforeach; ?>
+					  </select>
+					</div>
+				  </div>
+				  <div class="col-md-3">
+					<div class="form-group">
+					  <label>Month</label>
+					  <select id="managerProjectReportMonth" class="form-control">
+						<?php for ($m = 1; $m <= 12; $m++) { ?>
+						  <option value="<?= $m; ?>" <?= ((int)date('n') === $m) ? 'selected' : ''; ?>>
+							<?= date('F', mktime(0, 0, 0, $m, 1)); ?>
+						  </option>
+						<?php } ?>
+					  </select>
+					</div>
+				  </div>
+				  <div class="col-md-3">
+					<div class="form-group">
+					  <label>Year</label>
+					  <select id="managerProjectReportYear" class="form-control">
+						<?php for ($y = (int)date('Y') - 5; $y <= (int)date('Y') + 1; $y++) { ?>
+						  <option value="<?= $y; ?>" <?= ((int)date('Y') === $y) ? 'selected' : ''; ?>>
+							<?= $y; ?>
+						  </option>
+						<?php } ?>
+					  </select>
+					</div>
+				  </div>
+				  <div class="col-md-2 d-flex align-items-end">
+					<div class="form-group w-100">
+					  <button type="button" class="btn btn-primary btn-block" id="reloadManagerProjectReport">Load</button>
+					</div>
+				  </div>
+				</div>
+
+				<div class="table-responsive">
+				  <table class="table table-bordered table-striped m-0" id="manager-monthly-project-report">
+					<thead>
+					  <tr>
+						<th>Project Name</th>
+						<th>Project Code</th>
+						<th>Project Owner</th>
+						<th>Status</th>
+						<th>Start Date</th>
+						<th>End Date</th>
+						<th>Project Cost</th>
+					  </tr>
+					</thead>
+					<tbody></tbody>
+					<tfoot>
+					  <tr>
+						<th colspan="6" class="text-right">Total Project Cost</th>
+						<th id="managerProjectReportTotalCost">0.00</th>
+					  </tr>
+					</tfoot>
+				  </table>
+				</div>
+			  </div>
+			</div>
+		  </div>
+		</div>
+		<?php } ?>
       </div><!-- /.container-fluid -->
     </div>
 	</div> <!-- end container fluid -->
@@ -3141,7 +3222,7 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <script src="dist/js/pages/dashboard2.js"></script>
 
 <script>
-let ortable, itemspo, stocktable, inventorytable, invInHistoryTable, invOutHistoryTable, inventoryMonthlySummaryTable, projecttable, projectMrReportTable, adminManagerReportTable, supplierTable, purchaseRequestTable, inventoryPurchaseRequestTable, purchaseOrderTable, userTable, auditLogTable;
+let ortable, itemspo, stocktable, inventorytable, invInHistoryTable, invOutHistoryTable, inventoryMonthlySummaryTable, projecttable, projectMrReportTable, managerMonthlyProjectTable, adminManagerReportTable, supplierTable, purchaseRequestTable, inventoryPurchaseRequestTable, purchaseOrderTable, userTable, auditLogTable;
 let myGeneratedPrTable;
 let encodePrItemsCache = {};
 let pendingEncodeAfterProductSave = null;
@@ -3386,6 +3467,45 @@ $(document).ready(function() {
                         render: function(data, type, row) {
                             if (type === 'display' || type === 'filter') {
                                 return row.claimed_mr_amount || '0.00';
+                            }
+                            return parseFloat(data || 0);
+                        }
+                    }
+                ]
+            });
+        }
+
+        if (!managerMonthlyProjectTable && $('#manager-monthly-project-report').length) {
+            managerMonthlyProjectTable = $('#manager-monthly-project-report').DataTable({
+                ajax: {
+                    url: 'ajax/fetch_manager_monthly_project_report.php',
+                    type: 'GET',
+                    data: function(d) {
+                        d.proj_code = $('#managerProjectReportProjCode').val();
+                        d.month = $('#managerProjectReportMonth').val();
+                        d.year = $('#managerProjectReportYear').val();
+                    },
+                    dataSrc: function(json) {
+                        let summary = json.summary || {};
+                        $('#managerProjectReportTotalCost').text(summary.total_project_cost || '0.00');
+                        return json.data || [];
+                    }
+                },
+                responsive: true,
+                autoWidth: false,
+                ordering: true,
+                columns: [
+                    { data: 'proj_name' },
+                    { data: 'proj_code' },
+                    { data: 'proj_owner' },
+                    { data: 'proj_status' },
+                    { data: 'proj_sd' },
+                    { data: 'proj_ed' },
+                    {
+                        data: 'proj_cost_raw',
+                        render: function(data, type, row) {
+                            if (type === 'display' || type === 'filter') {
+                                return row.proj_cost || '0.00';
                             }
                             return parseFloat(data || 0);
                         }
@@ -4003,7 +4123,10 @@ $(document).ready(function() {
                 break;
             case 'report':
                 initReportSection();
-                if (refresh) reloadDataTable(projectMrReportTable);
+                if (refresh) {
+                    reloadDataTable(projectMrReportTable);
+                    reloadDataTable(managerMonthlyProjectTable);
+                }
                 break;
             case 'inventory_report':
                 initInventoryReportSection();
@@ -4086,6 +4209,11 @@ $(document).ready(function() {
     $('#reloadAdminManagerReport, #adminReportMonth, #adminReportYear').on('click change', function() {
         initAdminReportSection();
         reloadDataTable(adminManagerReportTable, true);
+    });
+
+    $('#reloadManagerProjectReport, #managerProjectReportProjCode, #managerProjectReportMonth, #managerProjectReportYear').on('click change', function() {
+        initReportSection();
+        reloadDataTable(managerMonthlyProjectTable, true);
     });
 
 });
