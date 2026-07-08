@@ -1816,19 +1816,6 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 				<div class="row">
 				  <div class="col-md-4">
 					<div class="form-group">
-					  <label>Project</label>
-					  <select id="managerProjectReportProjCode" class="form-control">
-						<option value="">All My Projects</option>
-						<?php foreach ($reportProjects as $project): ?>
-						  <option value="<?= htmlspecialchars($project['proj_code']); ?>">
-							<?= htmlspecialchars($project['proj_code'] . ' : ' . $project['proj_name']); ?>
-						  </option>
-						<?php endforeach; ?>
-					  </select>
-					</div>
-				  </div>
-				  <div class="col-md-3">
-					<div class="form-group">
 					  <label>Month</label>
 					  <select id="managerProjectReportMonth" class="form-control">
 						<?php for ($m = 1; $m <= 12; $m++) { ?>
@@ -1839,7 +1826,7 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 					  </select>
 					</div>
 				  </div>
-				  <div class="col-md-3">
+				  <div class="col-md-4">
 					<div class="form-group">
 					  <label>Year</label>
 					  <select id="managerProjectReportYear" class="form-control">
@@ -1851,7 +1838,7 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 					  </select>
 					</div>
 				  </div>
-				  <div class="col-md-2 d-flex align-items-end">
+				  <div class="col-md-4 d-flex align-items-end">
 					<div class="form-group w-100">
 					  <button type="button" class="btn btn-primary btn-block" id="reloadManagerProjectReport">Load</button>
 					</div>
@@ -3480,7 +3467,6 @@ $(document).ready(function() {
                     url: 'ajax/fetch_manager_monthly_project_report.php',
                     type: 'GET',
                     data: function(d) {
-                        d.proj_code = $('#managerProjectReportProjCode').val();
                         d.month = $('#managerProjectReportMonth').val();
                         d.year = $('#managerProjectReportYear').val();
                     },
@@ -4210,7 +4196,7 @@ $(document).ready(function() {
         reloadDataTable(adminManagerReportTable, true);
     });
 
-    $('#reloadManagerProjectReport, #managerProjectReportProjCode, #managerProjectReportMonth, #managerProjectReportYear').on('click change', function() {
+    $('#reloadManagerProjectReport, #managerProjectReportMonth, #managerProjectReportYear').on('click change', function() {
         initReportSection();
         reloadDataTable(managerMonthlyProjectTable, true);
     });

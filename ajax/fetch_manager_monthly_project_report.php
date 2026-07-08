@@ -25,7 +25,6 @@ if (($_SESSION['user_type'] ?? '') !== 'Manager') {
 }
 
 $userCode = $_SESSION['user_code'];
-$projCode = trim((string)($_GET['proj_code'] ?? ''));
 $month = (int)($_GET['month'] ?? date('n'));
 $year = (int)($_GET['year'] ?? date('Y'));
 
@@ -53,11 +52,6 @@ try {
 
     if ($hasApprovalColumn) {
         $where[] = 'COALESCE(proj_approval_status, 1) = 1';
-    }
-
-    if ($projCode !== '') {
-        $where[] = 'proj_code = ?';
-        $params[] = $projCode;
     }
 
     $whereSql = implode(' AND ', $where);
@@ -109,7 +103,6 @@ try {
             'total_project_cost' => number_format((float)($summary['total_project_cost'] ?? 0), 2)
         ],
         'filter' => [
-            'proj_code' => $projCode,
             'month' => $month,
             'year' => $year,
             'start_date' => $startDate,
