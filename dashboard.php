@@ -3429,18 +3429,6 @@ $(document).ready(function() {
                         let summary = json.summary || {};
                         $('#managerProjectReportTotalCost').text(summary.total_project_cost || '0.00');
                         return json.data || [];
-                    },
-                    error: function(xhr) {
-                        let message = 'Unable to load monthly project report.';
-                        if (xhr.responseJSON && xhr.responseJSON.message) {
-                            message = xhr.responseJSON.message;
-                        }
-                        $('#managerProjectReportTotalCost').text('0.00');
-                        if (typeof toastr !== 'undefined') {
-                            toastr.error(message);
-                        } else {
-                            alert(message);
-                        }
                     }
                 },
                 responsive: true,
