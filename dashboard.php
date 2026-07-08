@@ -3462,6 +3462,12 @@ $(document).ready(function() {
         }
 
         if (!managerMonthlyProjectTable && $('#manager-monthly-project-report').length) {
+            if (!$('#managerProjectReportMonth').val()) {
+                $('#managerProjectReportMonth').val('<?= (int)date('n'); ?>');
+            }
+            if (!$('#managerProjectReportYear').val()) {
+                $('#managerProjectReportYear').val('<?= (int)date('Y'); ?>');
+            }
             managerMonthlyProjectTable = $('#manager-monthly-project-report').DataTable({
                 ajax: {
                     url: 'ajax/fetch_manager_monthly_project_report.php',
@@ -3474,6 +3480,18 @@ $(document).ready(function() {
                         let summary = json.summary || {};
                         $('#managerProjectReportTotalCost').text(summary.total_project_cost || '0.00');
                         return json.data || [];
+                    },
+                    error: function(xhr) {
+                        let message = 'Unable to load monthly project report.';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            message = xhr.responseJSON.message;
+                        }
+                        $('#managerProjectReportTotalCost').text('0.00');
+                        if (typeof toastr !== 'undefined') {
+                            toastr.error(message);
+                        } else {
+                            alert(message);
+                        }
                     }
                 },
                 responsive: true,
@@ -4198,7 +4216,9 @@ $(document).ready(function() {
 
     $('#reloadManagerProjectReport, #managerProjectReportMonth, #managerProjectReportYear').on('click change', function() {
         initReportSection();
-        reloadDataTable(managerMonthlyProjectTable, true);
+        if (managerMonthlyProjectTable) {
+            managerMonthlyProjectTable.ajax.reload(null, true);
+        }
     });
 
 });
