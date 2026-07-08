@@ -1850,7 +1850,6 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 					<thead>
 					  <tr>
 						<th>Project Name</th>
-						<th>Project Code</th>
 						<th>Project Owner</th>
 						<th>Status</th>
 						<th>Start Date</th>
@@ -1861,7 +1860,7 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 					<tbody></tbody>
 					<tfoot>
 					  <tr>
-						<th colspan="6" class="text-right">Total Project Cost</th>
+						<th colspan="5" class="text-right">Total Project Cost</th>
 						<th id="managerProjectReportTotalCost">0.00</th>
 					  </tr>
 					</tfoot>
@@ -3435,8 +3434,16 @@ $(document).ready(function() {
                 autoWidth: false,
                 ordering: true,
                 columns: [
-                    { data: 'proj_name' },
-                    { data: 'proj_code' },
+                    {
+                        data: 'proj_name',
+                        render: function(data, type, row) {
+                            if (type !== 'display') {
+                                return data || '';
+                            }
+                            return escapeHtml(data || '-') +
+                                '<br><small class="text-muted">' + escapeHtml(row.proj_code || '-') + '</small>';
+                        }
+                    },
                     { data: 'proj_owner' },
                     { data: 'proj_status' },
                     { data: 'proj_sd' },
