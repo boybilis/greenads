@@ -3409,57 +3409,6 @@ $(document).ready(function() {
                 ]
             });
         }
-    }
-
-    function initAdminReportSection() {
-        if (!adminManagerReportTable && $('#admin-manager-report').length) {
-            adminManagerReportTable = $('#admin-manager-report').DataTable({
-                ajax: {
-                    url: 'ajax/fetch_admin_manager_project_report.php',
-                    type: 'GET',
-                    data: function(d) {
-                        d.month = $('#adminReportMonth').val();
-                        d.year = $('#adminReportYear').val();
-                    },
-                    dataSrc: function(json) {
-                        let summary = json.summary || {};
-                        $('#adminManagerOngoingTotal').text(summary.ongoing_projects || 0);
-                        $('#adminManagerFinishedTotal').text(summary.finished_projects || 0);
-                        $('#adminManagerProjectTotal').text(summary.total_projects || 0);
-                        $('#adminManagerCostTotal').text(summary.total_project_cost || '0.00');
-                        $('#adminManagerClaimedMrTotal').text(summary.claimed_mr_amount || '0.00');
-                        return json.data || [];
-                    }
-                },
-                responsive: true,
-                autoWidth: false,
-                ordering: true,
-                columns: [
-                    { data: 'manager_name' },
-                    { data: 'ongoing_projects' },
-                    { data: 'finished_projects' },
-                    { data: 'total_projects' },
-                    {
-                        data: 'total_project_cost_raw',
-                        render: function(data, type, row) {
-                            if (type === 'display' || type === 'filter') {
-                                return row.total_project_cost || '0.00';
-                            }
-                            return parseFloat(data || 0);
-                        }
-                    },
-                    {
-                        data: 'claimed_mr_amount_raw',
-                        render: function(data, type, row) {
-                            if (type === 'display' || type === 'filter') {
-                                return row.claimed_mr_amount || '0.00';
-                            }
-                            return parseFloat(data || 0);
-                        }
-                    }
-                ]
-            });
-        }
 
         if (!managerMonthlyProjectTable && $('#manager-monthly-project-report').length) {
             if (!$('#managerProjectReportMonth').val()) {
@@ -3509,6 +3458,57 @@ $(document).ready(function() {
                         render: function(data, type, row) {
                             if (type === 'display' || type === 'filter') {
                                 return row.proj_cost || '0.00';
+                            }
+                            return parseFloat(data || 0);
+                        }
+                    }
+                ]
+            });
+        }
+    }
+
+    function initAdminReportSection() {
+        if (!adminManagerReportTable && $('#admin-manager-report').length) {
+            adminManagerReportTable = $('#admin-manager-report').DataTable({
+                ajax: {
+                    url: 'ajax/fetch_admin_manager_project_report.php',
+                    type: 'GET',
+                    data: function(d) {
+                        d.month = $('#adminReportMonth').val();
+                        d.year = $('#adminReportYear').val();
+                    },
+                    dataSrc: function(json) {
+                        let summary = json.summary || {};
+                        $('#adminManagerOngoingTotal').text(summary.ongoing_projects || 0);
+                        $('#adminManagerFinishedTotal').text(summary.finished_projects || 0);
+                        $('#adminManagerProjectTotal').text(summary.total_projects || 0);
+                        $('#adminManagerCostTotal').text(summary.total_project_cost || '0.00');
+                        $('#adminManagerClaimedMrTotal').text(summary.claimed_mr_amount || '0.00');
+                        return json.data || [];
+                    }
+                },
+                responsive: true,
+                autoWidth: false,
+                ordering: true,
+                columns: [
+                    { data: 'manager_name' },
+                    { data: 'ongoing_projects' },
+                    { data: 'finished_projects' },
+                    { data: 'total_projects' },
+                    {
+                        data: 'total_project_cost_raw',
+                        render: function(data, type, row) {
+                            if (type === 'display' || type === 'filter') {
+                                return row.total_project_cost || '0.00';
+                            }
+                            return parseFloat(data || 0);
+                        }
+                    },
+                    {
+                        data: 'claimed_mr_amount_raw',
+                        render: function(data, type, row) {
+                            if (type === 'display' || type === 'filter') {
+                                return row.claimed_mr_amount || '0.00';
                             }
                             return parseFloat(data || 0);
                         }

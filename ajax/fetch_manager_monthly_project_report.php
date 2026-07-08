@@ -44,11 +44,11 @@ try {
     $hasApprovalColumn = in_array('proj_approval_status', $columns, true);
 
     $where = [
-        'proj_mgr = ?',
-        'MONTH(proj_sd) = ?',
-        'YEAR(proj_sd) = ?'
+        'TRIM(proj_mgr) = ?',
+        'DATE(proj_sd) >= ?',
+        'DATE(proj_sd) < ?'
     ];
-    $params = [$userCode, $month, $year];
+    $params = [$userCode, $startDate, $endDate];
 
     if ($hasApprovalColumn) {
         $where[] = 'COALESCE(proj_approval_status, 1) = 1';
