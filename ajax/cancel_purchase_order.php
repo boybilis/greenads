@@ -96,9 +96,11 @@ try {
     $resetPr = $pdo->prepare("UPDATE tbl_purchase_requests SET status = 'Pending' WHERE pr_id IN ($placeholders) AND status = 'PO Requested'");
     $resetPr->execute($linkedPrIds);
 
-    audit_log($pdo, 'CANCEL', 'Purchase Order', $po['po_ref_no'] ?: (string)$poId, 'Cancelled pending PO request; linked PR reset to Pending.');
+    if ($pdo->inTransaction()) {
+        $pdo->commit();
+    }
 
-    $pdo->commit();
+    audit_log($pdo, 'CANCEL', 'Purchase Order', $po['po_ref_no'] ?: (string)$poId, 'Cancelled pending PO request; linked PR reset to Pending.');
 
     echo json_encode(['status' => 'success', 'message' => 'PO request cancelled. Linked PR can now be edited.']);
 } catch (Exception $e) {
