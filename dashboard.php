@@ -6567,6 +6567,51 @@ $(document).on('click', '.delete-po-request', function(e) {
     });
 });
 
+$(document).on('click', '.cancel-po-request', function(e) {
+    e.preventDefault();
+
+    const poId = $(this).data('id');
+    const poRef = $(this).data('ref') || '';
+    if (!poId) {
+        toastr.error('Invalid PO reference.');
+        return;
+    }
+
+    if (!confirm('Cancel PO request ' + poRef + '? Linked PR will return to Pending so it can be edited.')) {
+        return;
+    }
+
+    $.ajax({
+        url: 'ajax/cancel_purchase_order.php',
+        type: 'POST',
+        dataType: 'json',
+        data: { po_id: poId },
+        success: function(res) {
+            if (res.status === 'success') {
+                toastr.success(res.message || 'PO request cancelled.');
+                if (purchaseOrderTable) {
+                    reloadDataTable(purchaseOrderTable);
+                }
+                if (purchaseRequestTable) {
+                    reloadDataTable(purchaseRequestTable);
+                }
+                if (inventoryPurchaseRequestTable) {
+                    reloadDataTable(inventoryPurchaseRequestTable);
+                }
+                if (myGeneratedPrTable) {
+                    reloadDataTable(myGeneratedPrTable);
+                }
+            } else {
+                toastr.error(res.message || 'Cancel failed.');
+            }
+        },
+        error: function(xhr) {
+            console.error(xhr.responseText);
+            toastr.error('Cancel failed.');
+        }
+    });
+});
+
 $('#fulfillPoForm').on('submit', function(e) {
     e.preventDefault();
 
