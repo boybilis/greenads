@@ -83,9 +83,20 @@ try {
     $linkedPrIds = [(int)$po['pr_id']];
     $linkedStmt = $pdo->prepare("SELECT pr_id FROM tbl_purchase_order_prs WHERE po_id = ?");
     $linkedStmt->execute([$poId]);
-    $linkedPrIds = array_values(array_unique(array_filter(array_map('intval', $linkedStmt->fetchAll(PDO::FETCH_COLUMN)))));
-    if (count($linkedPrIds) === 0) {
-        $linkedPrIds = [(int)$po['pr_id']];
+    $linkedPrIds = array_merge($linkedPrIds, array_map('intval', $linkedStmt->fetchAll(PDO::FETCH_COLUMN)));
+
+    $itemLinkedStmt = $pdo->prepare("
+        SELECT DISTINCT pri.pr_id
+        FROM tbl_purchase_order_items poi
+        INNER JOIN tbl_purchase_request_items pri ON pri.pr_item_id = poi.pr_item_id
+        WHERE poi.po_id = ?
+    ");
+    $itemLinkedStmt->execute([$poId]);
+    $linkedPrIds = array_merge($linkedPrIds, array_map('intval', $itemLinkedStmt->fetchAll(PDO::FETCH_COLUMN)));
+
+    $linkedPrIds = array_values(array_unique(array_filter($linkedPrIds)));
+    if (!$linkedPrIds) {
+        throw new RuntimeException('No linked PR was found for this PO.');
     }
 
     $pdo->prepare("DELETE FROM tbl_purchase_order_items WHERE po_id = ?")->execute([$poId]);
@@ -93,8 +104,19 @@ try {
     $pdo->prepare("DELETE FROM tbl_purchase_orders WHERE po_id = ?")->execute([$poId]);
 
     $placeholders = implode(',', array_fill(0, count($linkedPrIds), '?'));
-    $resetPr = $pdo->prepare("UPDATE tbl_purchase_requests SET status = 'Pending' WHERE pr_id IN ($placeholders) AND status = 'PO Requested'");
+    $resetPr = $pdo->prepare("
+        UPDATE tbl_purchase_requests
+        SET status = 'Pending'
+        WHERE pr_id IN ($placeholders)
+          AND TRIM(status) NOT IN ('PO Fulfilled', 'Encoded')
+    ");
     $resetPr->execute($linkedPrIds);
+
+    $verifyDelete = $pdo->prepare("SELECT COUNT(*) FROM tbl_purchase_orders WHERE po_id = ?");
+    $verifyDelete->execute([$poId]);
+    if ((int)$verifyDelete->fetchColumn() > 0) {
+        throw new RuntimeException('PO cancellation did not complete. Please try again.');
+    }
 
     if ($pdo->inTransaction()) {
         $pdo->commit();
