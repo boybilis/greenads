@@ -119,7 +119,7 @@ try {
             if ($isApproved && !$isVerified) {
                 $action .= ' | <a href="#" class="fulfill-po" data-id="' . (int)$row['po_id'] . '" data-ref="' . htmlspecialchars($poRefNo) . '" data-action-label="Fulfill"><span class="badge badge-warning">Fulfill</span></a>';
             }
-            if (!$isVerified) {
+            if ($isApproved && !$isVerified) {
                 $action .= ' | <a href="#" class="delete-po-request" data-id="' . (int)$row['po_id'] . '"><span class="badge badge-danger">Delete</span></a>';
             }
         } else {
@@ -128,9 +128,6 @@ try {
                 if (!$isVerified) {
                     $verifyLabel = (($_SESSION['user_type'] ?? '') === 'Purchasing') ? 'Verify' : 'Fulfill';
                     $action .= ' | <a href="#" class="fulfill-po" data-id="' . (int)$row['po_id'] . '" data-ref="' . htmlspecialchars($poRefNo) . '" data-action-label="' . $verifyLabel . '"><span class="badge badge-warning">' . $verifyLabel . '</span></a>';
-                }
-                if (!$isVerified && ($_SESSION['user_type'] ?? '') === 'Purchasing') {
-                    $action .= ' | <a href="#" class="delete-po-request" data-id="' . (int)$row['po_id'] . '"><span class="badge badge-danger">Delete</span></a>';
                 }
             } else {
                 $action = '<span class="badge badge-secondary">PO for Approval</span>';
