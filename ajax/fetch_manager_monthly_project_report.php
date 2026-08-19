@@ -87,8 +87,8 @@ try {
             'proj_name' => htmlspecialchars((string)($row['proj_name'] ?? '')),
             'proj_owner' => htmlspecialchars((string)($row['proj_owner'] ?? '')),
             'proj_status' => ((int)($row['proj_status'] ?? 0) === 1)
-                ? '<span class="badge bg-success">Completed</span>'
-                : '<span class="badge bg-warning">Ongoing</span>',
+                ? '<span class="status-capsule status-success">Completed</span>'
+                : '<span class="status-capsule status-warning">Ongoing</span>',
             'proj_sd' => !empty($row['proj_sd']) ? date('M d, Y', strtotime($row['proj_sd'])) : '-',
             'proj_ed' => !empty($row['proj_ed']) ? date('M d, Y', strtotime($row['proj_ed'])) : '-',
             'proj_cost_raw' => $projectCost,

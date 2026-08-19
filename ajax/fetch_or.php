@@ -41,15 +41,15 @@ if ($rows && is_array($rows)) {
 
         // ✅ STATUS BADGE (Bootstrap 5 version)
         if ((int)$row['or_status'] === 0) {
-            $status = '<span class="badge bg-warning text-dark">Pending</span>';
+            $status = '<span class="status-capsule status-warning">Pending</span>';
         } elseif ((int)$row['or_status'] === 1) {
-            $status = '<span class="badge bg-success">Approved</span>';
+            $status = '<span class="status-capsule status-success">Approved</span>';
         } elseif ((int)$row['or_status'] === 2) {
-            $status = '<span class="badge bg-danger">Cancelled</span>';
+            $status = '<span class="status-capsule status-danger">Cancelled</span>';
         } elseif ((int)$row['or_status'] === 3) {
-            $status = '<span class="badge bg-primary">Approved and Claimed</span>';
+            $status = '<span class="status-capsule status-primary">Approved and Claimed</span>';
         } else {
-            $status = '<span class="badge bg-secondary">Unknown</span>';
+            $status = '<span class="status-capsule status-secondary">Unknown</span>';
         }
 
         // ✅ SAFE DATE
@@ -84,7 +84,7 @@ if ($rows && is_array($rows)) {
                 ';
             }
         } elseif ((int)$row['or_status'] === 3) {
-            $action = '<span class="badge bg-primary">Claimed</span>';
+            $action = '<span class="status-capsule status-primary">Claimed</span>';
         } else {
             $action = '
                 <a href="#" class="edit-or" data-id="' . $row['or_id'] . '">

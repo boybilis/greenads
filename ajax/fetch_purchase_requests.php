@@ -73,15 +73,15 @@ try {
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $status = $row['status'] ?: 'Pending';
         if ($status === 'Encoded') {
-            $badgeClass = 'badge-primary';
+            $badgeClass = 'status-primary';
         } elseif ($status === 'For Pickup') {
-            $badgeClass = 'badge-success';
+            $badgeClass = 'status-success';
         } elseif ($status === 'PO Fulfilled') {
-            $badgeClass = 'badge-warning';
+            $badgeClass = 'status-warning';
         } elseif (in_array($status, ['Completed', 'PO Requested'], true)) {
-            $badgeClass = 'badge-success';
+            $badgeClass = 'status-success';
         } else {
-            $badgeClass = 'badge-warning';
+            $badgeClass = 'status-warning';
         }
         $itemStmt->execute([(int)$row['pr_id']]);
 
@@ -133,7 +133,7 @@ try {
             'requested_by' => htmlspecialchars($row['requested_by'] ?: '-'),
             'item_count' => (int)$row['item_count'],
             'total_qty' => number_format((float)$row['total_qty'], 2),
-            'status_badge' => '<span class="badge ' . $badgeClass . '">' . htmlspecialchars($status) . '</span>',
+            'status_badge' => '<span class="status-capsule ' . $badgeClass . '">' . htmlspecialchars($status) . '</span>',
             'action' => $action
     ];
 	}

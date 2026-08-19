@@ -43,11 +43,11 @@ if ($rows && is_array($rows)) {
 		$reorderLevel = (int)($row['reorder_level'] ?? 10);
 
 if ($qty > $reorderLevel) {
-    $status = '<span class="badge badge-success">Available</span>';
+    $status = '<span class="status-capsule status-success">Available</span>';
 } elseif ($qty > 0) {
-    $status = '<span class="badge badge-warning">Low on Stock</span>';
+    $status = '<span class="status-capsule status-warning">Low on Stock</span>';
 } else {
-    $status = '<span class="badge badge-danger">Out of Stock</span>';
+    $status = '<span class="status-capsule status-danger">Out of Stock</span>';
 }
 
         $data[] = [

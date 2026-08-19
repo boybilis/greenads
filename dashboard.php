@@ -115,6 +115,37 @@ tr.pending-approval-row td {
   padding: 0;
   width: 32px;
 }
+
+.status-capsule {
+  align-items: center;
+  background: #fff;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: .72rem;
+  font-weight: 700;
+  gap: .35rem;
+  letter-spacing: .02em;
+  line-height: 1;
+  padding: .35rem .65rem;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.status-capsule::before {
+  background: currentColor;
+  border-radius: 50%;
+  content: '';
+  height: .4rem;
+  width: .4rem;
+}
+
+.status-warning { color: #9a6700; }
+.status-success { color: #198754; }
+.status-danger { color: #dc3545; }
+.status-info { color: #0c7891; }
+.status-primary { color: #0d6efd; }
+.status-secondary { color: #6c757d; }
   </style>
   <style>
   .item-dropdown {
@@ -704,15 +735,15 @@ if (!isset($_SESSION['user_type']) ||
                       <?php foreach ($latestMrs as $mr): ?>
                         <?php
                         if ((int)$mr['or_status'] === 0) {
-                            $mrStatus = '<span class="badge badge-warning">Pending</span>';
+                            $mrStatus = '<span class="status-capsule status-warning">Pending</span>';
                         } elseif ((int)$mr['or_status'] === 1) {
-                            $mrStatus = '<span class="badge badge-success">Approved</span>';
+                            $mrStatus = '<span class="status-capsule status-success">Approved</span>';
                         } elseif ((int)$mr['or_status'] === 2) {
-                            $mrStatus = '<span class="badge badge-danger">Cancelled</span>';
+                            $mrStatus = '<span class="status-capsule status-danger">Cancelled</span>';
                         } elseif ((int)$mr['or_status'] === 3) {
-                            $mrStatus = '<span class="badge badge-primary">Approved and Claimed</span>';
+                            $mrStatus = '<span class="status-capsule status-primary">Approved and Claimed</span>';
                         } else {
-                            $mrStatus = '<span class="badge badge-secondary">Unknown</span>';
+                            $mrStatus = '<span class="status-capsule status-secondary">Unknown</span>';
                         }
                         ?>
                         <tr>
@@ -919,7 +950,7 @@ if (!isset($_SESSION['user_type']) ||
               <div class="card-header border-primary">
                 <h3 class="card-title">
                   Project List
-                  <span class="badge bg-warning text-dark ml-2" id="projectApprovalCounter">0 Pending Approval</span>
+                  <span class="status-capsule status-warning ml-2" id="projectApprovalCounter">0 Pending Approval</span>
                 </h3>
 
                
@@ -1152,10 +1183,9 @@ if (!isset($_SESSION['user_type']) ||
                   <table class="table m-0 table-striped" id="items-po">
                     <thead>
                     <tr>
+                      <th>Status / Actions</th>
                       <th>Product Name</th>
-                      <th>Description</th>
-                      <th>Status</th>
-                      <th>Action</th>
+                      <th>Details</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -2796,6 +2826,21 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <input type="text" name="item_color" class="form-control">
           </div>
 
+          <div class="mb-3">
+            <label class="form-label">GSM / Size</label>
+            <input type="text" name="gsm_size" class="form-control" list="itemRequestGsmSizeOptions" placeholder="e.g. 180 GSM or XL">
+            <datalist id="itemRequestGsmSizeOptions">
+              <option value="S">
+              <option value="M">
+              <option value="L">
+              <option value="XL">
+              <option value="XXL">
+              <option value="3XL">
+              <option value="4XL">
+              <option value="5XL">
+            </datalist>
+          </div>
+
           <div class="row">
             <div class="col-md-6">
               <div class="mb-3">
@@ -3973,21 +4018,21 @@ $(document).ready(function() {
                     data: 'proj_approval_status',
                     render: function (data) {
                         if (parseInt(data, 10) === 1) {
-                            return '<span class="badge bg-success">Approved</span>';
+                            return '<span class="status-capsule status-success">Approved</span>';
                         }
-                        return '<span class="badge bg-warning text-dark">Pending Admin Approval</span>';
+                        return '<span class="status-capsule status-warning">Pending Admin Approval</span>';
                     }
                 },
                 {
                     data: 'proj_status',
                     render: function (data) {
                         if (data == 0) {
-                            return '<span class="badge bg-warning">Ongoing</span>';
+                            return '<span class="status-capsule status-warning">Ongoing</span>';
                         }
                         if (data == 1) {
-                            return '<span class="badge bg-success">Completed</span>';
+                            return '<span class="status-capsule status-success">Completed</span>';
                         }
-                        return '<span class="badge bg-secondary">Unknown</span>';
+                        return '<span class="status-capsule status-secondary">Unknown</span>';
                     }
                 },
                 {
@@ -6007,6 +6052,7 @@ $(document).on('click', '.edit-item-request', function(e) {
     $('#saveItemRequestBtn').text('Update Request');
     $('#itemRequestForm [name="item_name"]').val($(this).data('name') || '');
     $('#itemRequestForm [name="item_color"]').val($(this).data('color') || '');
+    $('#itemRequestForm [name="gsm_size"]').val($(this).data('gsm-size') || '');
     $('#itemRequestForm [name="request_qty"]').val($(this).data('qty') || 1);
     $('#itemRequestForm [name="unit"]').val($(this).data('unit') || '');
     $('#itemRequestForm [name="description"]').val($(this).data('description') || '');
@@ -6711,7 +6757,7 @@ $(document).on('click', '.encode-pr-request', function(e) {
                 '<td>' + encodeModalEscape(item.item_name) + '</td>' +
                 '<td class="text-right">' + formatPoQty(item.po_qty) + '</td>' +
                 '<td>' + encodeModalEscape(item.unit || '') + '</td>' +
-                '<td>' + (encoded ? '<span class="badge badge-success">PO Encoded</span>' : '<a href="#" class="encode-pr-item"><span class="badge badge-warning">Encode</span></a>') + '</td>' +
+                '<td>' + (encoded ? '<span class="status-capsule status-success">PO Encoded</span>' : '<a href="#" class="encode-pr-item"><span class="badge badge-warning">Encode</span></a>') + '</td>' +
                 '</tr>';
         });
 
@@ -6755,6 +6801,8 @@ $(document).on('click', '.encode-pr-item', function(e) {
         $('#category').val('fab');
         const requestedColor = item.color || ((String(item.description || '').match(/Color:\s*([^\n]+)/i) || [])[1]) || '';
         $('#color').val(requestedColor === 'N/A' ? '' : requestedColor);
+        const requestedGsmSize = ((String(item.description || '').match(/GSM\s*\/\s*Size:\s*([^\n]+)/i) || [])[1]) || '';
+        $('#gsm').val(requestedGsmSize);
         $('#description').val(item.description || '');
         $('#quantity').val(0);
         $('#unit').val(item.unit || '');
@@ -6783,12 +6831,12 @@ $(document).on('click', '.encode-pr-item', function(e) {
         },
         dataType: 'json',
         beforeSend: function() {
-            btn.replaceWith('<span class="badge badge-secondary">Encoding...</span>');
+            btn.replaceWith('<span class="status-capsule status-secondary">Encoding...</span>');
         },
         success: function(res) {
             if (res.status === 'success') {
                 toastr.success(res.message);
-                row.find('td:last').html('<span class="badge badge-success">PO Encoded</span>');
+                row.find('td:last').html('<span class="status-capsule status-success">PO Encoded</span>');
                 reloadDataTable(stocktable);
                 reloadDataTable(itemspo);
                 reloadDataTable(inventorytable);

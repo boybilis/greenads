@@ -130,7 +130,7 @@ try {
                     $action .= ' | <a href="#" class="fulfill-po" data-id="' . (int)$row['po_id'] . '" data-ref="' . htmlspecialchars($poRefNo) . '" data-action-label="' . $verifyLabel . '"><span class="badge badge-warning">' . $verifyLabel . '</span></a>';
                 }
             } else {
-                $action = '<span class="badge badge-secondary">PO for Approval</span>';
+                $action = '<span class="status-capsule status-warning">PO for Approval</span>';
                 if (($_SESSION['user_type'] ?? '') === 'Purchasing') {
                     $action .= ' | <a href="#" class="cancel-po-request" data-id="' . (int)$row['po_id'] . '" data-ref="' . htmlspecialchars($poRefNo) . '"><span class="badge badge-warning">Cancel</span></a>';
                 }
@@ -145,7 +145,7 @@ try {
             'po_date' => htmlspecialchars($row['po_date']),
             'receipt_no' => htmlspecialchars($row['receipt_no'] ?: '-'),
             'date_received' => htmlspecialchars($row['date_received'] ?: '-'),
-            'fulfillment_status' => $isVerified ? '<span class="badge badge-success">PO Verified</span>' : '<span class="badge badge-secondary">' . htmlspecialchars($fulfillmentStatus !== '' ? $fulfillmentStatus : 'Pending') . '</span>',
+            'fulfillment_status' => $isVerified ? '<span class="status-capsule status-success">PO Verified</span>' : '<span class="status-capsule status-secondary">' . htmlspecialchars($fulfillmentStatus !== '' ? $fulfillmentStatus : 'Pending') . '</span>',
             'supplier_name' => htmlspecialchars($row['supplier_name'] ?: '-'),
             'item_count' => (int)$row['item_count'],
             'total_po_qty' => number_format((float)$row['total_po_qty'], 2),

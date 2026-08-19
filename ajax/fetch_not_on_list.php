@@ -18,6 +18,9 @@ if (!in_array('request_qty', $columns, true)) {
 if (!in_array('unit', $columns, true)) {
     $pdo->exec("ALTER TABLE item_requests ADD unit VARCHAR(50) DEFAULT NULL AFTER request_qty");
 }
+if (!in_array('gsm_size', $columns, true)) {
+    $pdo->exec("ALTER TABLE item_requests ADD gsm_size VARCHAR(100) DEFAULT NULL AFTER item_color");
+}
 
 if ($userType === 'Manager') {
     $stmt = $pdo->prepare("
@@ -42,41 +45,45 @@ if ($rows && is_array($rows)) {
 		$status=$rawStatus;
 		
 		if($status=='Pending'){
-			$status='<span class="badge bg-warning text-dark">Pending</span>';
+			$status='<span class="status-capsule status-warning">Pending</span>';
 		}elseif($status=='Ordered'){
-			$status='<span class="badge bg-info">Ordered</span>';
+			$status='<span class="status-capsule status-info">Ordered</span>';
 		}elseif($status=='Now available'){
-			$status='<span class="badge bg-success">Now available</span>';
+			$status='<span class="status-capsule status-success">Now Available</span>';
+		}else{
+			$status='<span class="status-capsule status-secondary">' . htmlspecialchars((string)$status, ENT_QUOTES, 'UTF-8') . '</span>';
 		}
 
        $desc = !empty($row['description']) ? htmlspecialchars($row['description'], ENT_QUOTES, 'UTF-8') : '-';
 $description = "Color: " . htmlspecialchars($row['item_color'] ?? '', ENT_QUOTES, 'UTF-8') .
+    "<br>GSM / Size: " . htmlspecialchars(($row['gsm_size'] ?? '') !== '' ? $row['gsm_size'] : '-', ENT_QUOTES, 'UTF-8') .
     "<br>Qty: " . number_format((float)($row['request_qty'] ?? 1), 2) . " " . htmlspecialchars($row['unit'] ?? '', ENT_QUOTES, 'UTF-8') .
     "<br>" . $desc;
         $canCreatePr = !in_array($userType, ['Inventory', 'Purchasing'], true)
             && ($userType === 'Admin' || in_array($row['requested_by'] ?? '', [$userCode, $username], true));
         $createPrButton = $canCreatePr
-            ? '<a href="#" class="create-item-request-pr" data-id="' . (int)$row['id'] . '"><span class="badge badge-success">Create PR</span></a>'
+            ? '<a href="#" class="create-item-request-pr d-block mb-1" data-id="' . (int)$row['id'] . '"><span class="badge badge-success">Create PR</span></a>'
             : '';
-        $editButton = '<a href="#" class="edit-item-request"'
+        $editButton = '<a href="#" class="edit-item-request d-block mb-1"'
             . ' data-id="' . (int)$row['id'] . '"'
             . ' data-name="' . htmlspecialchars($row['item_name'] ?? '', ENT_QUOTES, 'UTF-8') . '"'
             . ' data-color="' . htmlspecialchars($row['item_color'] ?? '', ENT_QUOTES, 'UTF-8') . '"'
+            . ' data-gsm-size="' . htmlspecialchars($row['gsm_size'] ?? '', ENT_QUOTES, 'UTF-8') . '"'
             . ' data-qty="' . htmlspecialchars((string)($row['request_qty'] ?? 1), ENT_QUOTES, 'UTF-8') . '"'
             . ' data-unit="' . htmlspecialchars($row['unit'] ?? '', ENT_QUOTES, 'UTF-8') . '"'
             . ' data-description="' . htmlspecialchars($row['description'] ?? '', ENT_QUOTES, 'UTF-8') . '">'
             . '<span class="badge badge-warning">Edit</span></a>';
-        $deleteButton = '<a href="#" class="delete-item-request" data-id="' . (int)$row['id'] . '"><span class="badge badge-danger">Delete</span></a>';
+        $deleteButton = '<a href="#" class="delete-item-request d-block" data-id="' . (int)$row['id'] . '"><span class="badge badge-danger">Delete</span></a>';
 		
 		
 
         $data[] = [
+            '<div class="d-flex flex-column align-items-start">'
+                . '<div class="mb-2">' . $status . '</div>'
+                . ($rawStatus === 'Pending' ? trim($createPrButton . $editButton . $deleteButton) : '')
+                . '</div>',
             htmlspecialchars($row['item_name'] ?? '', ENT_QUOTES, 'UTF-8'),
-            $description,
-            $status,
-            $rawStatus === 'Pending'
-                ? trim($createPrButton . ' ' . $editButton . ' ' . $deleteButton)
-                : '<span class="text-muted">-</span>'
+            $description
         ];
     }
 }

@@ -44,9 +44,12 @@ try {
     if (!in_array('unit', $itemRequestColumns, true)) {
         $pdo->exec("ALTER TABLE item_requests ADD unit VARCHAR(50) DEFAULT NULL AFTER request_qty");
     }
+    if (!in_array('gsm_size', $itemRequestColumns, true)) {
+        $pdo->exec("ALTER TABLE item_requests ADD gsm_size VARCHAR(100) DEFAULT NULL AFTER item_color");
+    }
 
     $pendingStmt = $pdo->prepare("
-        SELECT id, item_name, item_color, request_qty, unit, description, requested_by, status
+        SELECT id, item_name, item_color, gsm_size, request_qty, unit, description, requested_by, status
         FROM item_requests
         WHERE id = ?
         LIMIT 1
@@ -164,6 +167,9 @@ try {
     foreach ($pendingItems as $item) {
         $sku = 'REQ-' . str_pad((string)$item['id'], 6, '0', STR_PAD_LEFT);
         $description = 'Color: ' . ($item['item_color'] ?: 'N/A');
+        if (!empty($item['gsm_size'])) {
+            $description .= "\nGSM / Size: " . $item['gsm_size'];
+        }
         if (!empty($item['description'])) {
             $description .= "\n" . $item['description'];
         }
