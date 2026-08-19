@@ -1,6 +1,7 @@
 <?php
 session_start();
 include_once('config.php');
+include_once('purchase_order_status_helper.php');
 
 header('Content-Type: application/json');
 
@@ -27,6 +28,10 @@ try {
             INDEX idx_po_prs_pr_id (pr_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ");
+
+    // Keep PR workflow statuses aligned with the linked PO's actual state.
+    sync_approved_po_pr_statuses($pdo);
+    sync_verified_po_pr_statuses($pdo);
     $poColumns = $pdo->query("SHOW COLUMNS FROM tbl_purchase_orders")->fetchAll(PDO::FETCH_COLUMN);
     if (!in_array('approval_status', $poColumns, true)) {
         $pdo->exec("ALTER TABLE tbl_purchase_orders ADD approval_status VARCHAR(30) NOT NULL DEFAULT 'Pending'");

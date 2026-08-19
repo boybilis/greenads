@@ -3728,7 +3728,15 @@ $(document).ready(function() {
 
         if (!purchaseRequestTable && $('#purchase-request-list').length) {
             purchaseRequestTable = $('#purchase-request-list').DataTable({
-                ajax: 'ajax/fetch_purchase_requests.php',
+                ajax: {
+                    url: 'ajax/fetch_purchase_requests.php',
+                    cache: false,
+                    dataSrc: function(response) {
+                        return (response.data || []).filter(function(row) {
+                            return String(row.status || '').trim().toLowerCase() === 'pending';
+                        });
+                    }
+                },
                 responsive: true,
                 autoWidth: false,
                 order: [],

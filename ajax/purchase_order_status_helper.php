@@ -55,7 +55,7 @@ function mark_po_linked_prs_approved(PDO $pdo, int $poId): int
         UPDATE tbl_purchase_requests
         SET status = 'PO Approved'
         WHERE pr_id IN ($placeholders)
-          AND TRIM(status) = 'PO Requested'
+          AND TRIM(status) IN ('PO Requested', 'PO Fulfilled')
     ");
     $stmt->execute($prIds);
 

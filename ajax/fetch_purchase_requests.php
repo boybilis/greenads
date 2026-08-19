@@ -65,11 +65,9 @@ try {
             COALESCE(SUM(pri.request_qty), 0) AS total_qty
         FROM tbl_purchase_requests pr
         LEFT JOIN tbl_purchase_request_items pri ON pri.pr_id = pr.pr_id
+        WHERE TRIM(COALESCE(pr.status, 'Pending')) = 'Pending'
         GROUP BY pr.pr_id, pr.pr_ref_no, pr.request_date, pr.requested_by, pr.status
-        ORDER BY
-            CASE WHEN COALESCE(pr.status, 'Pending') = 'Pending' THEN 0 ELSE 1 END ASC,
-            pr.request_date DESC,
-            pr.pr_id DESC
+        ORDER BY pr.request_date DESC, pr.pr_id DESC
     ");
 
     $data = [];
@@ -138,6 +136,7 @@ try {
             'pr_display' => $prDisplay,
             'request_date' => htmlspecialchars($row['request_date']),
             'requested_by' => htmlspecialchars($row['requested_by'] ?: '-'),
+            'status' => $status,
             'item_count' => (int)$row['item_count'],
             'total_qty' => number_format((float)$row['total_qty'], 2),
             'status_badge' => '<span class="status-capsule ' . $badgeClass . '">' . htmlspecialchars($status) . '</span>',
