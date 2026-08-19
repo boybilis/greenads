@@ -85,6 +85,10 @@ try {
                 WHEN COALESCE(linked_po.approval_status, po.approval_status, 'Pending') = 'Approved' THEN 1
                 ELSE 0
             END) AS po_approved,
+            MIN(CASE
+                WHEN COALESCE(linked_po.fulfillment_status, po.fulfillment_status, 'Pending') = 'PO Verified' THEN 1
+                ELSE 0
+            END) AS po_verified,
             COALESCE(pri.item_count, 0) AS item_count,
             COALESCE(pri.total_qty, 0) AS total_qty
         FROM tbl_purchase_requests pr
@@ -131,8 +135,14 @@ try {
         if (in_array($userType, ['Admin', 'Inventory'], true) && $status === 'PO Approved') {
             $action .= ' <span class="badge badge-warning">For Delivery</span>';
         }
-        if (in_array($userType, ['Admin', 'Inventory'], true) && $status === 'PO Fulfilled') {
+        if (
+            in_array($userType, ['Admin', 'Inventory'], true)
+            && $status === 'PO Fulfilled'
+            && (int)($row['po_verified'] ?? 0) === 1
+        ) {
             $action .= ' <a href="#" class="encode-pr-request" data-id="' . (int)$row['pr_id'] . '" data-po-id="' . (int)$row['po_id'] . '"><span class="badge badge-success">Receive Item</span></a>';
+        } elseif (in_array($userType, ['Admin', 'Inventory'], true) && $status === 'PO Fulfilled') {
+            $action .= ' <span class="badge badge-warning">For Delivery</span>';
         }
         if (!in_array($status, ['PO Requested', 'PO Approved', 'PO Fulfilled', 'Encoded'], true)) {
             $action .= ' <a href="#" class="delete-pr-request" data-id="' . (int)$row['pr_id'] . '"><span class="badge badge-danger">Delete</span></a>';
