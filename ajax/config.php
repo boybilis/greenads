@@ -72,8 +72,8 @@ define('DB_USER', get_config_value('GAP_DB_USER'));
 define('DB_PASSWORD', get_config_value('GAP_DB_PASSWORD'));
 define('DB_HOST', get_config_value('GAP_DB_HOST') ?: 'localhost');
 
-if (DB_NAME === '' || DB_USER === '' || DB_PASSWORD === '') {
-    error_log('Database configuration is incomplete. Required env vars: GAP_DB_NAME, GAP_DB_USER, GAP_DB_PASSWORD.');
+if (DB_NAME === '' || DB_USER === '') {
+    error_log('Database configuration is incomplete. Required env vars: GAP_DB_NAME and GAP_DB_USER.');
     http_response_code(500);
     exit('Application configuration error.');
 }
