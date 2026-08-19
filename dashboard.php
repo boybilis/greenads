@@ -1726,12 +1726,11 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <thead>
                           <tr>
                             <th>PR No. / Date</th>
-                            <th>Project Code</th>
-                            <th>Requested By</th>
-                            <th class="pr-items-column">Items</th>
-                            <th>Total Qty</th>
                             <th>Status</th>
                             <th>Action</th>
+                            <th>Project / Requested By</th>
+                            <th class="pr-items-column">Items</th>
+                            <th>Total Qty</th>
                           </tr>
                         </thead>
                         <tbody></tbody>
@@ -1744,12 +1743,11 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <thead>
                           <tr>
                             <th>PR No. / Date</th>
-                            <th>Project Code</th>
-                            <th>Requested By</th>
-                            <th class="pr-items-column">Items</th>
-                            <th>Total Qty</th>
                             <th>Status</th>
                             <th>Action</th>
+                            <th>Project / Requested By</th>
+                            <th class="pr-items-column">Items</th>
+                            <th>Total Qty</th>
                           </tr>
                         </thead>
                         <tbody></tbody>
@@ -3499,12 +3497,11 @@ $(document).ready(function() {
                 order: [],
                 columns: [
                     { data: 'pr_display' },
-                    { data: 'proj_code' },
-                    { data: 'requested_by' },
-                    { data: 'item_count', width: '58px', className: 'pr-items-column' },
-                    { data: 'total_qty' },
                     { data: 'status_badge' },
-                    { data: 'action' }
+                    { data: 'action' },
+                    { data: 'project_requested_by_display' },
+                    { data: 'item_count', width: '58px', className: 'pr-items-column' },
+                    { data: 'total_qty' }
                 ]
             });
         }
@@ -3517,12 +3514,11 @@ $(document).ready(function() {
                 order: [],
                 columns: [
                     { data: 'pr_display' },
-                    { data: 'proj_code' },
-                    { data: 'requested_by' },
-                    { data: 'item_count', width: '58px', className: 'pr-items-column' },
-                    { data: 'total_qty' },
                     { data: 'status_badge' },
-                    { data: 'action' }
+                    { data: 'action' },
+                    { data: 'project_requested_by_display' },
+                    { data: 'item_count', width: '58px', className: 'pr-items-column' },
+                    { data: 'total_qty' }
                 ]
             });
         }

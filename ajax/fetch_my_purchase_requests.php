@@ -103,6 +103,8 @@ try {
         $prRefNo = $row['pr_ref_no'] ?: ('PR-' . str_pad((string)$row['pr_id'], 6, '0', STR_PAD_LEFT));
         $requestDateDisplay = !empty($row['request_date']) ? date('M d, Y', strtotime($row['request_date'])) : '-';
         $prDisplay = htmlspecialchars($prRefNo) . '<br><small class="text-muted">' . htmlspecialchars($requestDateDisplay) . '</small>';
+        $projectRequestedByDisplay = htmlspecialchars($row['proj_code'] ?: '-')
+            . '<br><small class="text-muted">' . htmlspecialchars($row['requested_by'] ?: '-') . '</small>';
         if ($status === 'Encoded') {
             $badgeClass = 'status-primary';
         } elseif ($status === 'For Pickup') {
@@ -137,6 +139,7 @@ try {
             'request_date' => htmlspecialchars($row['request_date']),
             'proj_code' => htmlspecialchars($row['proj_code'] ?: '-'),
             'requested_by' => htmlspecialchars($row['requested_by'] ?: '-'),
+            'project_requested_by_display' => $projectRequestedByDisplay,
             'item_count' => (int)$row['item_count'],
             'total_qty' => number_format((float)$row['total_qty'], 2),
             'status_badge' => '<span class="status-capsule ' . $badgeClass . '">' . htmlspecialchars($status) . '</span>',
