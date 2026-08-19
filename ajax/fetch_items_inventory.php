@@ -19,7 +19,7 @@ while ($reservedRow = $reservedStmt->fetch(PDO::FETCH_ASSOC)) {
     $reservedBySku[$reservedRow['sku']] = (float)$reservedRow['reserved_qty'];
 }
 
-$rows = $db->getAllRecords('tbl_items');
+$rows = $db->getAllRecords('tbl_items', '*', '', 'ORDER BY id DESC');
 
 $data = [];
 

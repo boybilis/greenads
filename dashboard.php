@@ -2446,6 +2446,7 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
           <div class="form-group">
 		  <input type="hidden" class="form-control" name="id" id="id">
+          <input type="hidden" name="reuse_existing_sku" id="reuse_existing_sku" value="0">
             <label>SKU <small class="text-muted">(Stock Keeping Unit)</small></label>
             <input type="text" class="form-control" name="sku" id="sku" placeholder="Auto-generated" readonly>
           </div>
@@ -2830,6 +2831,7 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <label class="form-label">GSM / Size</label>
             <input type="text" name="gsm_size" class="form-control" list="itemRequestGsmSizeOptions" placeholder="e.g. 180 GSM or XL">
             <datalist id="itemRequestGsmSizeOptions">
+              <option value="Not Applicable">
               <option value="S">
               <option value="M">
               <option value="L">
@@ -3258,6 +3260,17 @@ let encodePrItemsCache = {};
 let pendingEncodeAfterProductSave = null;
 $(document).ready(function() {
    // $('.table').DataTable();
+
+    // Keep large tables lightweight and preserve each endpoint's newest-first order.
+    $.extend(true, $.fn.dataTable.defaults, {
+        processing: true,
+        deferRender: true,
+        pageLength: 10,
+        lengthMenu: [[10, 25, 50], [10, 25, 50]],
+        searchDelay: 350,
+        order: []
+    });
+    $.ajaxSetup({ cache: false });
 
 	if ($('#salesChart').length && typeof Chart !== 'undefined') {
 		Object.keys(Chart.instances || {}).forEach(function(key) {
@@ -4243,6 +4256,20 @@ $(document).ready(function() {
         $('#' + target).removeClass('d-none');
         loadDashboardSection(target, true);
     });
+
+    function refreshVisibleDashboardTables() {
+        if (document.hidden) {
+            return;
+        }
+
+        const activeTarget = $('#side-menu .nav-link.active[data-target]').data('target');
+        if (activeTarget) {
+            loadDashboardSection(activeTarget, true);
+        }
+    }
+
+    $(window).on('focus', refreshVisibleDashboardTables);
+    window.setInterval(refreshVisibleDashboardTables, 60000);
 
     $('#reloadInventoryMonthlyReport, #inventoryReportMonth, #inventoryReportYear').on('click change', function() {
         initInventoryReportSection();
@@ -6794,6 +6821,7 @@ $(document).on('click', '.encode-pr-item', function(e) {
         pendingEncodeAfterProductSave = { row: row, poItemId: poItemId };
         $('#productForm')[0].reset();
         $('#id').val('');
+        $('#reuse_existing_sku').val('1');
         $('#productModalLabel').text('Add Requested Item');
         $('#sku').val('');
         $('#material_name').val(item.item_name || '');

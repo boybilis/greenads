@@ -14,7 +14,7 @@ if (!in_array('reorder_level', $columns, true)) {
     $pdo->exec("ALTER TABLE tbl_items ADD reorder_level INT NOT NULL DEFAULT 10");
 }
 
-$rows = $db->getAllRecords('tbl_items');
+$rows = $db->getAllRecords('tbl_items', '*', '', 'ORDER BY id DESC');
 
 $reservedStmt = $pdo->query("
     SELECT oi.sku, SUM(oi.qty) AS reserved_qty

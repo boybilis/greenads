@@ -161,17 +161,43 @@ if($pid!=""){
 	}
 
 	if($sku!=""){
-		$skuCheckStmt = $pdo->prepare("SELECT COUNT(*) FROM tbl_items WHERE sku = ?");
+		$materialName = trim((string)($_POST['material_name'] ?? ''));
+		$category = trim((string)($_POST['category'] ?? ''));
+		$color = trim((string)($_POST['color'] ?? ''));
+		$gsm = trim((string)($_POST['gsm'] ?? ''));
+		$unit = trim((string)($_POST['unit'] ?? ''));
+		$reuseExistingSku = (string)($_POST['reuse_existing_sku'] ?? '') === '1';
+
+		$skuCheckStmt = $pdo->prepare("SELECT sku, material_name, color, gsm, unit FROM tbl_items WHERE sku = ? LIMIT 1");
 		$skuCheckStmt->execute([$sku]);
-		if ((int)$skuCheckStmt->fetchColumn() > 0) {
+		$existingSkuItem = $skuCheckStmt->fetch(PDO::FETCH_ASSOC);
+		if ($existingSkuItem) {
+			$normalizeReuseValue = function($value) {
+				$value = preg_replace('/\s+/u', ' ', trim((string)$value));
+				return function_exists('mb_strtolower')
+					? mb_strtolower($value, 'UTF-8')
+					: strtolower($value);
+			};
+			$matchesRequestedItem = $normalizeReuseValue($existingSkuItem['material_name'] ?? '') === $normalizeReuseValue($materialName)
+				&& $normalizeReuseValue($existingSkuItem['color'] ?? '') === $normalizeReuseValue($color)
+				&& $normalizeReuseValue($existingSkuItem['gsm'] ?? '') === $normalizeReuseValue($gsm)
+				&& $normalizeReuseValue($existingSkuItem['unit'] ?? '') === $normalizeReuseValue($unit);
+
+			if ($reuseExistingSku && $matchesRequestedItem) {
+				header('Content-Type: application/json');
+				echo json_encode([
+					'status' => 'success',
+					'message' => 'Existing matching SKU reused. Encoding will continue.',
+					'sku' => $existingSkuItem['sku'],
+					'reused' => true
+				]);
+				exit;
+			}
+
 			echo 3;
 			exit;
 		}
 
-		$materialName = trim((string)($_POST['material_name'] ?? ''));
-		$category = trim((string)($_POST['category'] ?? ''));
-		$color = trim((string)($_POST['color'] ?? ''));
-		$unit = trim((string)($_POST['unit'] ?? ''));
 		if ($materialName === '' || $category === '' || $color === '' || $unit === '') {
 			header('Content-Type: application/json');
 			echo json_encode([
@@ -187,7 +213,7 @@ if($pid!=""){
 			'material_type' => trim((string)($_POST['material_type'] ?? '')),
 			'category' => $category,
 			'color' => $color,
-			'gsm' => trim((string)($_POST['gsm'] ?? '')),
+			'gsm' => $gsm,
 			'description' => trim((string)($_POST['description'] ?? '')),
 			'quantity' => max(0, (float)($_POST['quantity'] ?? 0)),
 			'unit' => $unit,

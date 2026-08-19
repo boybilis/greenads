@@ -16,7 +16,7 @@ if (isset($_SESSION['user_dept']) && $_SESSION['user_dept'] === 'Project') {
         FROM tbl_or o
         LEFT JOIN tbl_project p ON p.proj_code = o.proj_code
         WHERE o.user_code = ?
-        ORDER BY o.proj_code ASC
+        ORDER BY o.or_id DESC
     ");
     $stmt->execute([$_SESSION['user_code']]);
 } else {
