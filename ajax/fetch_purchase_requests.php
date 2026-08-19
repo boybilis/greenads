@@ -66,12 +66,18 @@ try {
         FROM tbl_purchase_requests pr
         LEFT JOIN tbl_purchase_request_items pri ON pri.pr_id = pr.pr_id
         GROUP BY pr.pr_id, pr.pr_ref_no, pr.request_date, pr.requested_by, pr.status
-        ORDER BY pr.pr_id DESC
+        ORDER BY
+            CASE WHEN COALESCE(pr.status, 'Pending') = 'Pending' THEN 0 ELSE 1 END ASC,
+            pr.request_date DESC,
+            pr.pr_id DESC
     ");
 
     $data = [];
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $status = $row['status'] ?: 'Pending';
+        $prRefNo = $row['pr_ref_no'] ?: ('PR-' . str_pad((string)$row['pr_id'], 6, '0', STR_PAD_LEFT));
+        $requestDateDisplay = !empty($row['request_date']) ? date('M d, Y', strtotime($row['request_date'])) : '-';
+        $prDisplay = htmlspecialchars($prRefNo) . '<br><small class="text-muted">' . htmlspecialchars($requestDateDisplay) . '</small>';
         if ($status === 'Encoded') {
             $badgeClass = 'status-primary';
         } elseif ($status === 'For Pickup') {
@@ -128,7 +134,8 @@ try {
             'pr_id' => (int)$row['pr_id'],
             'select_po' => $selectPo,
             'items' => $items,
-            'pr_ref_no' => htmlspecialchars($row['pr_ref_no'] ?: ('PR-' . str_pad((string)$row['pr_id'], 6, '0', STR_PAD_LEFT))),
+            'pr_ref_no' => htmlspecialchars($prRefNo),
+            'pr_display' => $prDisplay,
             'request_date' => htmlspecialchars($row['request_date']),
             'requested_by' => htmlspecialchars($row['requested_by'] ?: '-'),
             'item_count' => (int)$row['item_count'],

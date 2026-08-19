@@ -146,6 +146,85 @@ tr.pending-approval-row td {
 .status-info { color: #0c7891; }
 .status-primary { color: #0d6efd; }
 .status-secondary { color: #6c757d; }
+
+#purchase-request-list th.pr-checkbox-column,
+#purchase-request-list td.pr-checkbox-column {
+  box-sizing: border-box;
+  max-width: 38px !important;
+  min-width: 38px !important;
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+  text-align: center;
+  width: 38px !important;
+}
+
+#purchase-request-list .select-pr-for-po,
+#purchase-request-list #selectAllPrForPo {
+  height: 16px;
+  margin: 0;
+  vertical-align: middle;
+  width: 16px;
+}
+
+#purchase-request-list th.pr-items-column,
+#purchase-request-list td.pr-items-column,
+#inventory-pr-list th.pr-items-column,
+#inventory-pr-list td.pr-items-column,
+#inventory-po-requested-pr-list th.pr-items-column,
+#inventory-po-requested-pr-list td.pr-items-column,
+#my-generated-pr-list th.pr-items-column,
+#my-generated-pr-list td.pr-items-column,
+#purchase-order-list th.pr-items-column,
+#purchase-order-list td.pr-items-column {
+  box-sizing: border-box;
+  max-width: 58px !important;
+  min-width: 58px !important;
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+  text-align: center;
+  width: 58px !important;
+}
+
+#inventoryPrTabs {
+  border-bottom: 0;
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+#inventoryPrTabs .nav-link {
+  background: #e9ecef;
+  border: 1px solid #ced4da;
+  border-radius: 12px !important;
+  color: #495057;
+  font-weight: 600;
+  margin-bottom: 0;
+  padding: 9px 16px;
+  transition: background-color .2s ease, border-color .2s ease, color .2s ease;
+}
+
+#inventoryPrTabs .nav-link:hover {
+  background: #dfe4e8;
+  border-color: #adb5bd;
+  color: #212529;
+}
+
+#inventoryPrTabs .nav-link.active {
+  background: #007bff;
+  border-color: #007bff !important;
+  border-bottom-color: #007bff !important;
+  box-shadow: 0 2px 5px rgba(0, 123, 255, .25);
+  color: #fff;
+}
+
+@media (max-width: 575.98px) {
+  #inventoryPrTabs .nav-item {
+    flex: 1 1 100%;
+  }
+
+  #inventoryPrTabs .nav-link {
+    text-align: center;
+  }
+}
   </style>
   <style>
   .item-dropdown {
@@ -1501,8 +1580,7 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <tr>
       <th>MR No.</th>
       <th>MR Date</th>
-      <th>Project Name</th>
-      <th>Project Code</th>
+      <th>Project</th>
       <th>Prepared By</th>
       <th>Grand Total</th>
       <th>Status</th>
@@ -1534,11 +1612,10 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                   <table class="table table-bordered table-striped m-0" id="my-generated-pr-list">
                     <thead>
                       <tr>
-                        <th>PR No.</th>
-                        <th>Date</th>
+                        <th>PR No. / Date</th>
                         <th>Project Code</th>
                         <th>Requested By</th>
-                        <th>Items</th>
+                        <th class="pr-items-column">Items</th>
                         <th>Total Qty</th>
                         <th>Status</th>
                         <th>Action</th>
@@ -1623,30 +1700,62 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 			<!-- .col-10 -->
 		
 		</div>
-		
+
 		<div class="row">
 		<div class="col-12">
             <div class="card">
-              <div class="card-header border-warning bg-light">
-                <h3 class="card-title">Generated PR Requests</h3>
+              <div class="card-header p-0 border-bottom-0 bg-light">
+                <ul class="nav nav-tabs" id="inventoryPrTabs" role="tablist">
+                  <li class="nav-item">
+                    <a class="nav-link active" id="inventory-generated-pr-tab" data-toggle="tab" href="#inventory-generated-pr-pane" role="tab" aria-controls="inventory-generated-pr-pane" aria-selected="true">
+                      Generated PR Requests
+                    </a>
+                  </li>
+                  <li class="nav-item">
+                    <a class="nav-link" id="inventory-processing-pr-tab" data-toggle="tab" href="#inventory-processing-pr-pane" role="tab" aria-controls="inventory-processing-pr-pane" aria-selected="false">
+                      PO Requested / Fulfilled PRs
+                    </a>
+                  </li>
+                </ul>
               </div>
               <div class="card-body p-3">
-                <div class="table-responsive">
-                  <table class="table table-bordered table-striped m-0" id="inventory-pr-list">
-                    <thead>
-                      <tr>
-                        <th>PR No.</th>
-                        <th>Date</th>
-                        <th>Project Code</th>
-                        <th>Requested By</th>
-                        <th>Items</th>
-                        <th>Total Qty</th>
-                        <th>Status</th>
-                        <th>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody></tbody>
-                  </table>
+                <div class="tab-content" id="inventoryPrTabContent">
+                  <div class="tab-pane fade show active" id="inventory-generated-pr-pane" role="tabpanel" aria-labelledby="inventory-generated-pr-tab">
+                    <div class="table-responsive">
+                      <table class="table table-bordered table-striped m-0" id="inventory-pr-list">
+                        <thead>
+                          <tr>
+                            <th>PR No. / Date</th>
+                            <th>Project Code</th>
+                            <th>Requested By</th>
+                            <th class="pr-items-column">Items</th>
+                            <th>Total Qty</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody></tbody>
+                      </table>
+                    </div>
+                  </div>
+                  <div class="tab-pane fade" id="inventory-processing-pr-pane" role="tabpanel" aria-labelledby="inventory-processing-pr-tab">
+                    <div class="table-responsive">
+                      <table class="table table-bordered table-striped m-0" id="inventory-po-requested-pr-list">
+                        <thead>
+                          <tr>
+                            <th>PR No. / Date</th>
+                            <th>Project Code</th>
+                            <th>Requested By</th>
+                            <th class="pr-items-column">Items</th>
+                            <th>Total Qty</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody></tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2363,11 +2472,10 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 				  <table class="table table-bordered table-striped m-0" id="purchase-request-list">
 					<thead>
 					  <tr>
-                        <th style="width:32px;"><input type="checkbox" id="selectAllPrForPo"></th>
-						<th>PR No.</th>
-						<th>Date</th>
+                        <th class="pr-checkbox-column"><input type="checkbox" id="selectAllPrForPo" aria-label="Select all purchase requests"></th>
+						<th>PR No. / Date</th>
 						<th>Requested By</th>
-						<th>Items</th>
+						<th class="pr-items-column">Items</th>
 						<th>Total Qty</th>
 						<th>Status</th>
 						<th>Action</th>
@@ -2391,16 +2499,13 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 				  <table class="table table-bordered table-striped m-0" id="purchase-order-list">
 					<thead>
 					  <tr>
-						<th>PO No.</th>
+						<th>PO No. / Date</th>
 						<th>PR No.</th>
-						<th>Date</th>
 						<th>Supplier</th>
-						<th>Items</th>
+						<th class="pr-items-column">Items</th>
 						<th>Total PO Qty</th>
-						<th>Status</th>
-						<th>Receipt No.</th>
-						<th>Date Received</th>
-						<th>Created By</th>
+						<th>Status / Created By</th>
+						<th>Receipt No. / Date Received</th>
 						<th>Action</th>
 					  </tr>
 					</thead>
@@ -3254,7 +3359,7 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <script src="dist/js/pages/dashboard2.js"></script>
 
 <script>
-let ortable, itemspo, stocktable, inventorytable, invInHistoryTable, invOutHistoryTable, inventoryMonthlySummaryTable, projecttable, projectMrReportTable, managerMonthlyProjectTable, adminManagerReportTable, supplierTable, purchaseRequestTable, inventoryPurchaseRequestTable, purchaseOrderTable, userTable, auditLogTable;
+let ortable, itemspo, stocktable, inventorytable, invInHistoryTable, invOutHistoryTable, inventoryMonthlySummaryTable, projecttable, projectMrReportTable, managerMonthlyProjectTable, adminManagerReportTable, supplierTable, purchaseRequestTable, inventoryPurchaseRequestTable, inventoryPoRequestedTable, purchaseOrderTable, userTable, auditLogTable;
 let myGeneratedPrTable;
 let encodePrItemsCache = {};
 let pendingEncodeAfterProductSave = null;
@@ -3336,6 +3441,9 @@ $(document).ready(function() {
         if (table && table.ajax) {
             table.ajax.reload(null, resetPaging);
         }
+        if (table === inventoryPurchaseRequestTable && inventoryPoRequestedTable && inventoryPoRequestedTable.ajax) {
+            inventoryPoRequestedTable.ajax.reload(null, resetPaging);
+        }
     }
 
     function initProductSection() {
@@ -3385,16 +3493,33 @@ $(document).ready(function() {
 
         if (!inventoryPurchaseRequestTable && $('#inventory-pr-list').length) {
             inventoryPurchaseRequestTable = $('#inventory-pr-list').DataTable({
-                ajax: 'ajax/fetch_my_purchase_requests.php',
+                ajax: 'ajax/fetch_my_purchase_requests.php?status_filter=exclude_po_requested',
                 responsive: true,
                 autoWidth: false,
-                order: [[0, 'desc']],
+                order: [],
                 columns: [
-                    { data: 'pr_ref_no' },
-                    { data: 'request_date' },
+                    { data: 'pr_display' },
                     { data: 'proj_code' },
                     { data: 'requested_by' },
-                    { data: 'item_count' },
+                    { data: 'item_count', width: '58px', className: 'pr-items-column' },
+                    { data: 'total_qty' },
+                    { data: 'status_badge' },
+                    { data: 'action' }
+                ]
+            });
+        }
+
+        if (!inventoryPoRequestedTable && $('#inventory-po-requested-pr-list').length) {
+            inventoryPoRequestedTable = $('#inventory-po-requested-pr-list').DataTable({
+                ajax: 'ajax/fetch_my_purchase_requests.php?status_filter=po_requested',
+                responsive: true,
+                autoWidth: false,
+                order: [],
+                columns: [
+                    { data: 'pr_display' },
+                    { data: 'proj_code' },
+                    { data: 'requested_by' },
+                    { data: 'item_count', width: '58px', className: 'pr-items-column' },
                     { data: 'total_qty' },
                     { data: 'status_badge' },
                     { data: 'action' }
@@ -3402,6 +3527,24 @@ $(document).ready(function() {
             });
         }
     }
+
+    $(document).on('shown.bs.tab', '#inventoryPrTabs a[data-toggle="tab"]', function() {
+        const selectedTable = $(this).attr('href') === '#inventory-processing-pr-pane'
+            ? inventoryPoRequestedTable
+            : inventoryPurchaseRequestTable;
+
+        if (!selectedTable) {
+            return;
+        }
+
+        selectedTable.columns.adjust();
+        if (selectedTable.responsive) {
+            selectedTable.responsive.recalc();
+        }
+        if (selectedTable.ajax) {
+            selectedTable.ajax.reload(null, false);
+        }
+    });
 
     function initInventoryReportSection() {
         if (!inventoryMonthlySummaryTable && $('#inventory-monthly-summary').length) {
@@ -3592,13 +3735,19 @@ $(document).ready(function() {
                 ajax: 'ajax/fetch_purchase_requests.php',
                 responsive: true,
                 autoWidth: false,
-                order: [[0, 'desc']],
+                order: [],
                 columns: [
-                    { data: 'select_po', orderable: false, searchable: false },
-                    { data: 'pr_ref_no' },
-                    { data: 'request_date' },
+                    {
+                        data: 'select_po',
+                        orderable: false,
+                        searchable: false,
+                        width: '38px',
+                        className: 'pr-checkbox-column',
+                        responsivePriority: 1
+                    },
+                    { data: 'pr_display' },
                     { data: 'requested_by' },
-                    { data: 'item_count' },
+                    { data: 'item_count', width: '58px', className: 'pr-items-column' },
                     { data: 'total_qty' },
                     { data: 'status_badge' },
                     { data: 'action' }
@@ -3611,18 +3760,15 @@ $(document).ready(function() {
                 ajax: 'ajax/fetch_purchase_orders.php',
                 responsive: true,
                 autoWidth: false,
-                order: [[0, 'desc']],
+                order: [],
                 columns: [
-                    { data: 'po_ref_no' },
+                    { data: 'po_display' },
                     { data: 'pr_ref_no' },
-                    { data: 'po_date' },
                     { data: 'supplier_name' },
-                    { data: 'item_count' },
+                    { data: 'item_count', width: '58px', className: 'pr-items-column' },
                     { data: 'total_po_qty' },
-                    { data: 'fulfillment_status' },
-                    { data: 'receipt_no' },
-                    { data: 'date_received' },
-                    { data: 'created_by' },
+                    { data: 'status_created_by_display' },
+                    { data: 'receipt_display' },
                     { data: 'action' }
                 ]
             });
@@ -4109,8 +4255,7 @@ $(document).ready(function() {
                 columns: [
                     { data: 'or_no' },
                     { data: 'or_date' },
-                    { data: 'proj_name' },
-                    { data: 'proj_code' },
+                    { data: 'project_display' },
                     { data: 'prepared_by' },
                     { data: 'grand_total' },
                     { data: 'status_badge' },
@@ -4124,13 +4269,12 @@ $(document).ready(function() {
                 ajax: 'ajax/fetch_my_purchase_requests.php?mine=1',
                 responsive: true,
                 autoWidth: false,
-                order: [[0, 'desc']],
+                order: [],
                 columns: [
-                    { data: 'pr_ref_no' },
-                    { data: 'request_date' },
+                    { data: 'pr_display' },
                     { data: 'proj_code' },
                     { data: 'requested_by' },
-                    { data: 'item_count' },
+                    { data: 'item_count', width: '58px', className: 'pr-items-column' },
                     { data: 'total_qty' },
                     { data: 'status_badge' },
                     { data: 'action' }
@@ -6584,6 +6728,9 @@ $(document).on('click', '.approve-po', function(e) {
                 toastr.success(res.message || 'PO approved.');
                 if (purchaseOrderTable) {
                     reloadDataTable(purchaseOrderTable);
+                }
+                if (inventoryPurchaseRequestTable) {
+                    reloadDataTable(inventoryPurchaseRequestTable);
                 }
             } else {
                 toastr.error(res.message || 'Failed to approve PO.');

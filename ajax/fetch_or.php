@@ -24,6 +24,7 @@ if (isset($_SESSION['user_dept']) && $_SESSION['user_dept'] === 'Project') {
         SELECT o.*, p.proj_name
         FROM tbl_or o
         LEFT JOIN tbl_project p ON p.proj_code = o.proj_code
+        ORDER BY o.or_id DESC
     ");
 }
 
@@ -62,6 +63,7 @@ if ($rows && is_array($rows)) {
         $dept  = htmlspecialchars($row['dept_code']);
         $proj  = htmlspecialchars($row['proj_code']);
         $projName = htmlspecialchars($row['proj_name'] ?: '-');
+        $projectDisplay = $projName . '<br><small class="text-muted">' . $proj . '</small>';
         $prep  = htmlspecialchars($row['prepared_by']);
 
         // ✅ VIEW BUTTON INSIDE OR NO
@@ -103,6 +105,7 @@ if ($rows && is_array($rows)) {
             "dept_code" => $dept,
             "proj_name" => $projName,
             "proj_code" => $proj,
+            "project_display" => $projectDisplay,
             "prepared_by" => $prep,
             "grand_total" => number_format((float)$row['grand_total'], 2),
             "status_badge" => $status,

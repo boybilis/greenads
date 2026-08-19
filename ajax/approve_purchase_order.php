@@ -2,6 +2,7 @@
 session_start();
 include_once('config.php');
 include_once('audit_helper.php');
+include_once('purchase_order_status_helper.php');
 
 header('Content-Type: application/json');
 
@@ -47,18 +48,26 @@ try {
         exit;
     }
 
+    $pdo->beginTransaction();
+
     $stmt = $pdo->prepare("
         UPDATE tbl_purchase_orders
         SET approval_status = 'Approved'
         WHERE po_id = ?
     ");
     $stmt->execute([$poId]);
+    $updatedPrCount = mark_po_linked_prs_approved($pdo, $poId);
+
+    $pdo->commit();
 
     $after = ['approval_status' => 'Approved'];
-    audit_log($pdo, 'APPROVE', 'Purchase Order', $before['po_ref_no'] ?: (string)$poId, audit_changed_fields($before, $after, ['approval_status']));
+    audit_log($pdo, 'APPROVE', 'Purchase Order', $before['po_ref_no'] ?: (string)$poId, audit_changed_fields($before, $after, ['approval_status']) . '; linked PR(s) moved to PO Approved: ' . $updatedPrCount);
 
-    echo json_encode(['status' => 'success', 'message' => 'PO approved successfully.']);
+    echo json_encode(['status' => 'success', 'message' => 'PO approved successfully. Linked PR requests are now PO Approved.']);
 } catch (Exception $e) {
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
     http_response_code(500);
     echo json_encode(['status' => 'error', 'message' => 'Request failed.']);
 }

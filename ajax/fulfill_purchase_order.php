@@ -2,6 +2,7 @@
 session_start();
 include_once('config.php');
 include_once('audit_helper.php');
+include_once('purchase_order_status_helper.php');
 
 header('Content-Type: application/json');
 
@@ -41,6 +42,8 @@ try {
         exit;
     }
 
+    $pdo->beginTransaction();
+
     $stmt = $pdo->prepare("
         UPDATE tbl_purchase_orders
         SET receipt_no = ?,
@@ -49,16 +52,22 @@ try {
         WHERE po_id = ?
     ");
     $stmt->execute([$receiptNo, $dateReceived, $poId]);
+    $updatedPrCount = mark_po_linked_prs_fulfilled($pdo, $poId);
+
+    $pdo->commit();
 
     $after = [
         'receipt_no' => $receiptNo,
         'date_received' => $dateReceived,
         'fulfillment_status' => 'PO Verified'
     ];
-    audit_log($pdo, 'VERIFY', 'Purchase Order', $before['po_ref_no'] ?: (string)$poId, audit_changed_fields($before, $after, ['receipt_no', 'date_received', 'fulfillment_status']));
+    audit_log($pdo, 'VERIFY', 'Purchase Order', $before['po_ref_no'] ?: (string)$poId, audit_changed_fields($before, $after, ['receipt_no', 'date_received', 'fulfillment_status']) . '; linked PR(s) moved to PO Fulfilled: ' . $updatedPrCount);
 
-    echo json_encode(['status' => 'success', 'message' => 'PO marked as verified.']);
+    echo json_encode(['status' => 'success', 'message' => 'PO marked as verified. Linked PR requests are now PO Fulfilled.']);
 } catch (Exception $e) {
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
     http_response_code(500);
     echo json_encode(['status' => 'error', 'message' => "Request failed."]);
 }

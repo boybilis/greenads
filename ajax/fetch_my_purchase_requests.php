@@ -45,6 +45,28 @@ try {
         $params[] = $_SESSION['user_code'];
     }
 
+    $statusFilter = trim((string)($_GET['status_filter'] ?? ''));
+    $orderSql = "
+        CASE WHEN COALESCE(pr.status, 'Pending') = 'Pending' THEN 0 ELSE 1 END ASC,
+        pr.request_date DESC,
+        pr.pr_id DESC
+    ";
+    if ($statusFilter === 'po_requested') {
+        $where .= ($where === '' ? 'WHERE ' : ' AND ') . "TRIM(pr.status) IN ('PO Requested', 'PO Approved', 'PO Fulfilled')";
+        $orderSql = "
+            CASE TRIM(pr.status)
+                WHEN 'PO Fulfilled' THEN 0
+                WHEN 'PO Approved' THEN 1
+                WHEN 'PO Requested' THEN 2
+                ELSE 3
+            END ASC,
+            pr.request_date DESC,
+            pr.pr_id DESC
+        ";
+    } elseif ($statusFilter === 'exclude_po_requested') {
+        $where .= ($where === '' ? 'WHERE ' : ' AND ') . "TRIM(COALESCE(pr.status, 'Pending')) NOT IN ('PO Requested', 'PO Approved', 'PO Fulfilled')";
+    }
+
     $stmt = $pdo->prepare("
         SELECT
             pr.pr_id,
@@ -71,19 +93,24 @@ try {
         LEFT JOIN tbl_purchase_orders linked_po ON linked_po.po_id = popr.po_id
         {$where}
         GROUP BY pr.pr_id, pr.pr_ref_no, pr.request_date, pr.proj_code, pr.requested_by, pr.status, pri.item_count, pri.total_qty
-        ORDER BY pr.pr_id DESC
+        ORDER BY {$orderSql}
     ");
     $stmt->execute($params);
 
     $data = [];
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $status = $row['status'] ?: 'Pending';
+        $prRefNo = $row['pr_ref_no'] ?: ('PR-' . str_pad((string)$row['pr_id'], 6, '0', STR_PAD_LEFT));
+        $requestDateDisplay = !empty($row['request_date']) ? date('M d, Y', strtotime($row['request_date'])) : '-';
+        $prDisplay = htmlspecialchars($prRefNo) . '<br><small class="text-muted">' . htmlspecialchars($requestDateDisplay) . '</small>';
         if ($status === 'Encoded') {
             $badgeClass = 'status-primary';
         } elseif ($status === 'For Pickup') {
             $badgeClass = 'status-success';
         } elseif ($status === 'PO Fulfilled') {
             $badgeClass = 'status-warning';
+        } elseif ($status === 'PO Approved') {
+            $badgeClass = 'status-info';
         } elseif (in_array($status, ['Completed', 'PO Requested'], true)) {
             $badgeClass = 'status-success';
         } else {
@@ -92,21 +119,21 @@ try {
 
         $action = '<a href="#" class="view-pr-request" data-id="' . (int)$row['pr_id'] . '"><span class="badge badge-info">View</span></a>';
         if (in_array($userType, ['Admin', 'Inventory'], true) && $status === 'PO Requested') {
-            if ((int)($row['po_approved'] ?? 0) === 1) {
-                $action .= ' <a href="#" class="receive-pr-items" data-id="' . (int)$row['pr_id'] . '" data-ref="' . htmlspecialchars($row['pr_ref_no'] ?: ('PR-' . str_pad((string)$row['pr_id'], 6, '0', STR_PAD_LEFT))) . '"><span class="badge badge-warning">Receive Item</span></a>';
-            } else {
-                $action .= ' <span class="badge badge-secondary" title="PO must be approved by Admin before receiving items.">Receive Item (PO for Approval)</span>';
-            }
+            $action .= ' <span class="badge badge-light border text-muted">PO for Approval</span>';
+        }
+        if (in_array($userType, ['Admin', 'Inventory'], true) && $status === 'PO Approved') {
+            $action .= ' <span class="badge badge-warning">For Delivery</span>';
         }
         if (in_array($userType, ['Admin', 'Inventory'], true) && $status === 'PO Fulfilled') {
-            $action .= ' <a href="#" class="encode-pr-request" data-id="' . (int)$row['pr_id'] . '" data-po-id="' . (int)$row['po_id'] . '"><span class="badge badge-success">Encode</span></a>';
+            $action .= ' <a href="#" class="encode-pr-request" data-id="' . (int)$row['pr_id'] . '" data-po-id="' . (int)$row['po_id'] . '"><span class="badge badge-success">Receive Item</span></a>';
         }
-        if (!in_array($status, ['PO Requested', 'PO Fulfilled', 'Encoded'], true)) {
+        if (!in_array($status, ['PO Requested', 'PO Approved', 'PO Fulfilled', 'Encoded'], true)) {
             $action .= ' <a href="#" class="delete-pr-request" data-id="' . (int)$row['pr_id'] . '"><span class="badge badge-danger">Delete</span></a>';
         }
 
         $data[] = [
-            'pr_ref_no' => htmlspecialchars($row['pr_ref_no'] ?: ('PR-' . str_pad((string)$row['pr_id'], 6, '0', STR_PAD_LEFT))),
+            'pr_ref_no' => htmlspecialchars($prRefNo),
+            'pr_display' => $prDisplay,
             'request_date' => htmlspecialchars($row['request_date']),
             'proj_code' => htmlspecialchars($row['proj_code'] ?: '-'),
             'requested_by' => htmlspecialchars($row['requested_by'] ?: '-'),

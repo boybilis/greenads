@@ -1,6 +1,7 @@
 <?php
 session_start();
 include_once('config.php');
+include_once('purchase_order_status_helper.php');
 include_once('audit_helper.php');
 
 header('Content-Type: application/json');
@@ -43,6 +44,7 @@ try {
     if (!in_array('approval_status', $poColumns, true)) {
         $pdo->exec("ALTER TABLE tbl_purchase_orders ADD approval_status VARCHAR(30) NOT NULL DEFAULT 'Pending' AFTER fulfillment_status");
     }
+
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS tbl_purchase_order_prs (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -74,6 +76,10 @@ try {
             INDEX idx_po_items_sku (sku)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ");
+
+    // Repair legacy approved/verified POs whose linked PR statuses were not advanced.
+    sync_approved_po_pr_statuses($pdo);
+    sync_verified_po_pr_statuses($pdo);
 
     $stmt = $pdo->query("
         SELECT
@@ -108,6 +114,24 @@ try {
         $isVerified = strcasecmp($fulfillmentStatus, 'PO Verified') === 0;
         $isApproved = ($row['approval_status'] ?? 'Pending') === 'Approved';
         $poRefNo = $row['po_ref_no'] ?: ('PO-' . str_pad((string)$row['po_id'], 6, '0', STR_PAD_LEFT));
+        $poDateDisplay = !empty($row['po_date']) ? date('M d, Y', strtotime($row['po_date'])) : '-';
+        $poDisplay = htmlspecialchars($poRefNo) . '<br><small class="text-muted">' . htmlspecialchars($poDateDisplay) . '</small>';
+        $receiptNo = $row['receipt_no'] ?: '-';
+        $receivedDateDisplay = !empty($row['date_received']) ? date('M d, Y', strtotime($row['date_received'])) : '-';
+        $receiptDisplay = htmlspecialchars($receiptNo) . '<br><small class="text-muted">' . htmlspecialchars($receivedDateDisplay) . '</small>';
+        $fulfillmentStatusDisplay = $isVerified
+            ? '<span class="status-capsule status-success">PO Verified</span>'
+            : '<span class="status-capsule status-secondary">' . htmlspecialchars($fulfillmentStatus !== '' ? $fulfillmentStatus : 'Pending') . '</span>';
+        $statusCreatedByDisplay = $fulfillmentStatusDisplay
+            . '<br><small class="text-muted">' . htmlspecialchars($row['created_by'] ?: '-') . '</small>';
+        $prReferences = array_values(array_filter(array_map('trim', explode(',', (string)($row['pr_ref_no'] ?: '-')))));
+        $prReferenceLines = [];
+        foreach (array_chunk($prReferences, 3) as $prReferenceGroup) {
+            $prReferenceLines[] = implode(', ', array_map(function($reference) {
+                return htmlspecialchars($reference, ENT_QUOTES, 'UTF-8');
+            }, $prReferenceGroup));
+        }
+        $prReferenceDisplay = '<small class="text-dark">' . implode('<br>', $prReferenceLines) . '</small>';
         $action = '';
 
         if ($isAdminUser) {
@@ -141,11 +165,14 @@ try {
             'po_id' => (int)$row['po_id'],
             'po_ref_no_raw' => $poRefNo,
             'po_ref_no' => htmlspecialchars($poRefNo),
-            'pr_ref_no' => htmlspecialchars($row['pr_ref_no'] ?: '-'),
+            'po_display' => $poDisplay,
+            'pr_ref_no' => $prReferenceDisplay,
             'po_date' => htmlspecialchars($row['po_date']),
             'receipt_no' => htmlspecialchars($row['receipt_no'] ?: '-'),
             'date_received' => htmlspecialchars($row['date_received'] ?: '-'),
-            'fulfillment_status' => $isVerified ? '<span class="status-capsule status-success">PO Verified</span>' : '<span class="status-capsule status-secondary">' . htmlspecialchars($fulfillmentStatus !== '' ? $fulfillmentStatus : 'Pending') . '</span>',
+            'receipt_display' => $receiptDisplay,
+            'fulfillment_status' => $fulfillmentStatusDisplay,
+            'status_created_by_display' => $statusCreatedByDisplay,
             'supplier_name' => htmlspecialchars($row['supplier_name'] ?: '-'),
             'item_count' => (int)$row['item_count'],
             'total_po_qty' => number_format((float)$row['total_po_qty'], 2),
