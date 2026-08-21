@@ -39,7 +39,7 @@ function sync_encoded_item_requests(PDO $pdo, ?int $prId = null): int
     $candidateStmt = $pdo->prepare("
         SELECT id
         FROM item_requests
-        WHERE status = 'Ordered'
+        WHERE status IN ('PR Requested', 'Ordered', 'PO Requested', 'PO Approved', 'PO Fulfilled')
           AND item_name = ?
           AND (requested_by = ? OR requested_by = ?)
         ORDER BY id ASC
@@ -71,7 +71,7 @@ function sync_encoded_item_requests(PDO $pdo, ?int $prId = null): int
         INNER JOIN tbl_purchase_requests pr ON pr.pr_id = pri.pr_id
         SET ir.status = 'Now available'
         WHERE pr.status = 'Encoded'
-          AND ir.status = 'Ordered'
+          AND ir.status IN ('PR Requested', 'Ordered', 'PO Requested', 'PO Approved', 'PO Fulfilled')
           {$wherePr}
     ");
     $availableStmt->execute($updateParams);

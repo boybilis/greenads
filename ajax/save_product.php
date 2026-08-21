@@ -92,13 +92,25 @@ if($pid!=""){
 		$beforeStmt->execute([$pid]);
 		$before = $beforeStmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
-		$set=array();
-		
-		foreach($_POST as $key => $value) {
-	//if($value!=''){
-		$set += [$key => $value];
-	//}
-}
+		$set = [];
+		$editableFields = [
+			'material_name',
+			'material_type',
+			'category',
+			'color',
+			'gsm',
+			'description',
+			'quantity',
+			'unit',
+			'unit_price',
+			'location',
+			'reorder_level'
+		];
+		foreach ($editableFields as $field) {
+			if (array_key_exists($field, $_POST)) {
+				$set[$field] = $_POST[$field];
+			}
+		}
 
         $newSku = generate_sku($_POST['material_name'] ?? '', $_POST['color'] ?? '', $_POST['gsm'] ?? '');
         if ($newSku === '') {
@@ -124,12 +136,17 @@ if($pid!=""){
             $set['quantity'] = $before['quantity'] ?? 0;
         }
 
-		$where   =   array(	
-			'id'=>$pid
-			);
-			
-		$upd    =   $db->update('tbl_items',$set,$where);
-		if($upd){
+		$assignments = [];
+		$params = [];
+		foreach ($set as $field => $value) {
+			$assignments[] = "`$field` = ?";
+			$params[] = $value;
+		}
+		$params[] = $pid;
+
+		$updateStmt = $pdo->prepare("UPDATE tbl_items SET " . implode(', ', $assignments) . " WHERE id = ?");
+		$updateSucceeded = $updateStmt->execute($params);
+		if($updateSucceeded){
 			$after = [
 				'sku' => $_POST['sku'] ?? '',
 				'material_name' => $_POST['material_name'] ?? '',

@@ -2,6 +2,7 @@
 session_start();
 include_once('config.php');
 include_once('audit_helper.php');
+include_once('purchase_order_status_helper.php');
 
 header('Content-Type: application/json');
 
@@ -91,8 +92,9 @@ try {
     $delPo->execute([$poId]);
 
     $placeholders = implode(',', array_fill(0, count($linkedPrIds), '?'));
-    $resetPr = $pdo->prepare("UPDATE tbl_purchase_requests SET status = 'Pending' WHERE pr_id IN ($placeholders) AND status = 'PO Requested'");
+    $resetPr = $pdo->prepare("UPDATE tbl_purchase_requests SET status = 'Pending' WHERE pr_id IN ($placeholders) AND status IN ('PO Requested', 'PO Approved')");
     $resetPr->execute($linkedPrIds);
+    mark_pr_linked_item_requests_status($pdo, $linkedPrIds, 'PR Requested', ['PO Requested', 'PO Approved']);
 
     audit_log($pdo, 'DELETE', 'Purchase Order', $po['po_ref_no'] ?: (string)$poId, 'Deleted purchase order; linked PR reset to Pending when applicable.');
 

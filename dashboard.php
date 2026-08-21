@@ -1409,8 +1409,10 @@ if (!isset($_SESSION['user_type']) ||
             <label>Request Date</label>
             <input type="date" 
        class="form-control" 
+       id="or_date"
        name="or_date" 
        value="<?php echo date('Y-m-d'); ?>" 
+       <?php if (($_SESSION['user_type'] ?? '') === 'Inventory') { echo 'readonly aria-readonly="true"'; } ?>
        required>
           </div>
         </div>
@@ -1445,7 +1447,7 @@ if (!isset($_SESSION['user_type']) ||
 $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 		   }
 			?>
-           <select name="proj_code" id="proj_code" class="form-control" required>
+           <select name="proj_code" id="proj_code" class="form-control" <?php if (($_SESSION['user_type'] ?? '') === 'Inventory') { echo 'disabled aria-disabled="true"'; } ?> required>
     <option value="">Select Project</option>
 
     <?php foreach($projs as $row): ?>
@@ -2918,11 +2920,19 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
       <form id="itemRequestForm">
         <input type="hidden" name="request_id" id="item_request_id" value="">
+        <input type="hidden" name="existing_sku" id="item_request_existing_sku" value="">
         <div class="modal-body">
 
-          <div class="mb-3">
+          <div class="mb-3" style="position: relative;">
             <label class="form-label">Item Name</label>
-            <input type="text" name="item_name" class="form-control" required>
+            <input type="text" name="item_name" id="item_request_item_name" class="form-control" autocomplete="off" placeholder="Type an item name or SKU" required>
+            <div class="item-dropdown" id="itemRequestItemDropdown"></div>
+            <small class="form-text text-muted">Search the Item List first. Select a match to use its existing SKU.</small>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Existing SKU</label>
+            <input type="text" id="item_request_existing_sku_display" class="form-control" placeholder="New item — SKU will be assigned later" readonly>
           </div>
 
           <div class="mb-3">
@@ -2984,6 +2994,34 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
   </div>
 </div>
 <!-- end item request modal -->
+
+<!-- create PR confirmation modal -->
+<div class="modal fade" id="createItemRequestPrModal" tabindex="-1" role="dialog" aria-labelledby="createItemRequestPrModalTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-light">
+        <h5 class="modal-title" id="createItemRequestPrModalTitle">Create Purchase Request</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="create_item_request_pr_id" value="">
+        <p class="mb-2">Create a Purchase Request for this material?</p>
+        <div class="alert alert-light border mb-0">
+          <strong id="create_item_request_pr_name">Selected material</strong>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-success" id="confirmCreateItemRequestPrBtn">
+          <i class="fas fa-file-alt mr-1"></i> Create PR
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- end create PR confirmation modal -->
 
 <!-- inventory in modal -->
 <div class="modal fade" id="inventoryInModal" tabindex="-1">
@@ -3362,6 +3400,18 @@ let myGeneratedPrTable;
 let encodePrItemsCache = {};
 let pendingEncodeAfterProductSave = null;
 $(document).ready(function() {
+    const inventoryMaterialRequestReadonly = <?= json_encode(($_SESSION['user_type'] ?? '') === 'Inventory'); ?>;
+
+    function enforceInventoryMaterialRequestReadonly() {
+        if (!inventoryMaterialRequestReadonly) {
+            return;
+        }
+
+        $('#or_date').prop('readonly', true).attr('aria-readonly', 'true');
+        $('#proj_code').prop('disabled', true).attr('aria-disabled', 'true');
+    }
+
+    enforceInventoryMaterialRequestReadonly();
    // $('.table').DataTable();
 
     // Keep large tables lightweight and preserve each endpoint's newest-first order.
@@ -5176,6 +5226,7 @@ $("#orForm").on("submit", function(e) {
         $("#orItemsTable tbody").html("");
         $("#grandTotal").val("0.00");
 		reloadDataTable(ortable);
+        reloadDataTable(itemspo);
         if (purchaseRequestTable) {
           reloadDataTable(purchaseRequestTable);
         }
@@ -5234,6 +5285,7 @@ $(document).on("click", "#approveOrBtn", function(e) {
         $("#grandTotal").val("0.00");
         $("#orForm input, #orForm textarea, #orForm select").prop("readonly", false);
         $("#orForm select").prop("disabled", false);
+        enforceInventoryMaterialRequestReadonly();
         $("#addItemRow").show();
         $("#saveorBtn").show().html('<i class="fas fa-save"></i> Save MR');
         reloadDataTable(ortable);
@@ -6183,9 +6235,113 @@ $(document).on('click', '.qr-btn', function () {
 
 
 // submit item request
+let itemRequestInventoryItems = [];
+let itemRequestInventoryLoad = null;
+
+function escapeItemRequestHtml(value) {
+    return $('<div>').text(value == null ? '' : String(value)).html();
+}
+
+function loadItemRequestInventoryItems() {
+    if (itemRequestInventoryItems.length) {
+        return $.Deferred().resolve(itemRequestInventoryItems).promise();
+    }
+    if (itemRequestInventoryLoad) {
+        return itemRequestInventoryLoad;
+    }
+
+    itemRequestInventoryLoad = $.ajax({
+        url: 'ajax/fetch_items_po.php',
+        dataType: 'json',
+        cache: false
+    }).done(function(response) {
+        itemRequestInventoryItems = (response.data || []).map(function(row) {
+            return {
+                sku: String(row[0] || ''),
+                item_name: String(row[1] || ''),
+                color: String(row[2] || ''),
+                description: String(row[3] || ''),
+                stock: String(row[4] || ''),
+                unit: String(row[5] || '')
+            };
+        });
+    }).always(function() {
+        itemRequestInventoryLoad = null;
+    });
+
+    return itemRequestInventoryLoad;
+}
+
+$('#itemRequestModal').on('show.bs.modal', function() {
+    loadItemRequestInventoryItems();
+});
+
+$(document).on('input', '#item_request_item_name', function() {
+    const keyword = $(this).val().trim().toLowerCase();
+    const dropdown = $('#itemRequestItemDropdown');
+
+    $('#item_request_existing_sku').val('');
+    $('#item_request_existing_sku_display').val('');
+
+    if (keyword === '') {
+        dropdown.empty().hide();
+        return;
+    }
+
+    loadItemRequestInventoryItems().done(function() {
+        const matches = itemRequestInventoryItems.filter(function(item) {
+            return item.item_name.toLowerCase().includes(keyword)
+                || item.sku.toLowerCase().includes(keyword)
+                || item.color.toLowerCase().includes(keyword);
+        }).slice(0, 30);
+
+        if (!matches.length) {
+            dropdown.html('<div class="item-option text-muted">No matching item found — this will be treated as a new item.</div>').show();
+            return;
+        }
+
+        const html = matches.map(function(item) {
+            return '<div class="item-option item-request-existing-option" data-sku="' + escapeItemRequestHtml(item.sku) + '">'
+                + '<strong>' + escapeItemRequestHtml(item.item_name) + '</strong> - ' + escapeItemRequestHtml(item.color || 'N/A') + '<br>'
+                + '<small>' + escapeItemRequestHtml(item.sku) + ' | ' + escapeItemRequestHtml(item.description || '-') + ' | ' + escapeItemRequestHtml(item.stock) + '</small>'
+                + '</div>';
+        }).join('');
+
+        dropdown.html(html).show();
+    });
+});
+
+$(document).on('mousedown', '.item-request-existing-option', function(e) {
+    e.preventDefault();
+    const sku = String($(this).data('sku') || '');
+    const item = itemRequestInventoryItems.find(function(candidate) {
+        return candidate.sku === sku;
+    });
+    if (!item) {
+        return;
+    }
+
+    $('#item_request_item_name').val(item.item_name);
+    $('#item_request_existing_sku').val(item.sku);
+    $('#item_request_existing_sku_display').val(item.sku);
+    $('#itemRequestForm [name="item_color"]').val(item.color);
+    $('#itemRequestForm [name="unit"]').val(item.unit);
+    $('#itemRequestForm [name="description"]').val(item.description === '-' ? '' : item.description);
+    $('#itemRequestItemDropdown').empty().hide();
+});
+
+$(document).on('click', function(e) {
+    if (!$(e.target).closest('#item_request_item_name, #itemRequestItemDropdown').length) {
+        $('#itemRequestItemDropdown').hide();
+    }
+});
+
 function resetItemRequestModal() {
     $('#itemRequestForm')[0].reset();
     $('#item_request_id').val('');
+    $('#item_request_existing_sku').val('');
+    $('#item_request_existing_sku_display').val('');
+    $('#itemRequestItemDropdown').empty().hide();
     $('#itemRequestModalTitle').text('Request New Item');
     $('#saveItemRequestBtn').text('Submit Request');
 }
@@ -6226,6 +6382,8 @@ $(document).on('click', '.edit-item-request', function(e) {
     $('#itemRequestModalTitle').text('Edit Item Request');
     $('#saveItemRequestBtn').text('Update Request');
     $('#itemRequestForm [name="item_name"]').val($(this).data('name') || '');
+    $('#item_request_existing_sku').val($(this).data('existing-sku') || '');
+    $('#item_request_existing_sku_display').val($(this).data('existing-sku') || '');
     $('#itemRequestForm [name="item_color"]').val($(this).data('color') || '');
     $('#itemRequestForm [name="gsm_size"]').val($(this).data('gsm-size') || '');
     $('#itemRequestForm [name="request_qty"]').val($(this).data('qty') || 1);
@@ -6282,11 +6440,19 @@ $(document).on('click', '.create-item-request-pr', function(e) {
         return;
     }
 
-    if (!confirm('Create a PR request from this item request?')) {
+    $('#create_item_request_pr_id').val(requestId);
+    $('#create_item_request_pr_name').text($(this).data('name') || 'Selected material');
+    $('#createItemRequestPrModal').modal('show');
+});
+
+$('#confirmCreateItemRequestPrBtn').on('click', function() {
+    const requestId = Number($('#create_item_request_pr_id').val() || 0);
+    if (!requestId) {
+        toastr.error('Invalid item request reference.');
         return;
     }
 
-    const btn = $(this);
+    const btn = $('#confirmCreateItemRequestPrBtn');
     const originalHtml = btn.html();
 
     $.ajax({
@@ -6295,11 +6461,12 @@ $(document).on('click', '.create-item-request-pr', function(e) {
         dataType: 'json',
         data: { item_request_id: requestId },
         beforeSend: function() {
-            btn.addClass('disabled').html('<i class="fas fa-spinner fa-spin"></i> Creating...');
+            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Creating...');
         },
         success: function(res) {
             if (res.status === 'success') {
                 toastr.success(res.message);
+                $('#createItemRequestPrModal').modal('hide');
                 reloadDataTable(itemspo);
                 if (purchaseRequestTable) {
                     reloadDataTable(purchaseRequestTable);
@@ -6316,9 +6483,15 @@ $(document).on('click', '.create-item-request-pr', function(e) {
             toastr.error(xhr.responseJSON?.message || 'Failed to create PR request.');
         },
         complete: function() {
-            btn.removeClass('disabled').html(originalHtml);
+            btn.prop('disabled', false).html(originalHtml);
         }
     });
+});
+
+$('#createItemRequestPrModal').on('hidden.bs.modal', function() {
+    $('#create_item_request_pr_id').val('');
+    $('#create_item_request_pr_name').text('Selected material');
+    $('#confirmCreateItemRequestPrBtn').prop('disabled', false).html('<i class="fas fa-file-alt mr-1"></i> Create PR');
 });
 
 function openPoModalForPrIds(prIds) {

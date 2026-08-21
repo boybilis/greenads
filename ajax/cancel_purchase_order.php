@@ -2,6 +2,7 @@
 session_start();
 include_once('config.php');
 include_once('audit_helper.php');
+include_once('purchase_order_status_helper.php');
 
 header('Content-Type: application/json');
 
@@ -111,6 +112,7 @@ try {
           AND TRIM(status) NOT IN ('PO Fulfilled', 'Encoded')
     ");
     $resetPr->execute($linkedPrIds);
+    mark_pr_linked_item_requests_status($pdo, $linkedPrIds, 'PR Requested', ['PO Requested', 'PO Approved']);
 
     $verifyDelete = $pdo->prepare("SELECT COUNT(*) FROM tbl_purchase_orders WHERE po_id = ?");
     $verifyDelete->execute([$poId]);

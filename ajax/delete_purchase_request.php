@@ -74,7 +74,7 @@ try {
             UPDATE item_requests
             SET status = 'Pending'
             WHERE id IN ($placeholders)
-              AND status = 'Ordered'
+              AND status IN ('PR Requested', 'Ordered')
         ");
         $resetItemRequests->execute($linkedItemRequestIds);
     }

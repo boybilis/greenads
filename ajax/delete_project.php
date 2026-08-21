@@ -221,7 +221,7 @@ try {
             $requestIds = array_values(array_unique($requestIds));
             if ($requestIds) {
                 $requestMarks = project_delete_placeholders($requestIds);
-                $pdo->prepare("UPDATE item_requests SET status = 'Pending' WHERE id IN ($requestMarks) AND status = 'Ordered'")->execute($requestIds);
+                $pdo->prepare("UPDATE item_requests SET status = 'Pending' WHERE id IN ($requestMarks) AND status IN ('PR Requested', 'Ordered')")->execute($requestIds);
             }
         }
         if (project_delete_table_exists($pdo, 'tbl_purchase_request_items')) {

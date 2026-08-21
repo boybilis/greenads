@@ -1,6 +1,7 @@
 <?php
 session_start();
 include_once('config.php');
+include_once('purchase_order_status_helper.php');
 include_once('audit_helper.php');
 
 header('Content-Type: application/json');
@@ -291,6 +292,7 @@ try {
         WHERE pr_id IN ($prPlaceholders)
     ");
     $updatePrStatusStmt->execute($prIds);
+    mark_pr_linked_item_requests_status($pdo, $prIds, 'PO Requested', ['PR Requested', 'Ordered']);
 
     $pdo->commit();
     $prRefNos = array_map(function($prRow) {

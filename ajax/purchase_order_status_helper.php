@@ -24,6 +24,43 @@ function get_po_linked_pr_ids(PDO $pdo, int $poId): array
     return array_values(array_unique(array_filter($prIds)));
 }
 
+function mark_pr_linked_item_requests_status(PDO $pdo, array $prIds, string $status, array $allowedStatuses): int
+{
+    $prIds = array_values(array_unique(array_filter(array_map('intval', $prIds))));
+    if (!$prIds || !$allowedStatuses) {
+        return 0;
+    }
+
+    $prPlaceholders = implode(',', array_fill(0, count($prIds), '?'));
+    $statusPlaceholders = implode(',', array_fill(0, count($allowedStatuses), '?'));
+    $stmt = $pdo->prepare("
+        UPDATE item_requests ir
+        INNER JOIN tbl_purchase_request_items pri ON pri.item_request_id = ir.id
+        SET ir.status = ?
+        WHERE pri.pr_id IN ($prPlaceholders)
+          AND TRIM(ir.status) IN ($statusPlaceholders)
+    ");
+    $stmt->execute(array_merge([$status], $prIds, $allowedStatuses));
+
+    return $stmt->rowCount();
+}
+
+function sync_item_request_po_statuses(PDO $pdo): int
+{
+    $stmt = $pdo->prepare("
+        UPDATE item_requests ir
+        INNER JOIN tbl_purchase_request_items pri ON pri.item_request_id = ir.id
+        INNER JOIN tbl_purchase_requests pr ON pr.pr_id = pri.pr_id
+        SET ir.status = TRIM(pr.status)
+        WHERE TRIM(pr.status) IN ('PO Requested', 'PO Approved', 'PO Fulfilled')
+          AND TRIM(ir.status) IN ('PR Requested', 'Ordered', 'PO Requested', 'PO Approved', 'PO Fulfilled')
+          AND TRIM(ir.status) <> TRIM(pr.status)
+    ");
+    $stmt->execute();
+
+    return $stmt->rowCount();
+}
+
 function mark_po_linked_prs_fulfilled(PDO $pdo, int $poId): int
 {
     $prIds = get_po_linked_pr_ids($pdo, $poId);
@@ -39,6 +76,7 @@ function mark_po_linked_prs_fulfilled(PDO $pdo, int $poId): int
           AND TRIM(status) IN ('PO Requested', 'PO Approved')
     ");
     $stmt->execute($prIds);
+    mark_pr_linked_item_requests_status($pdo, $prIds, 'PO Fulfilled', ['PO Requested', 'PO Approved']);
 
     return $stmt->rowCount();
 }
@@ -58,6 +96,7 @@ function mark_po_linked_prs_approved(PDO $pdo, int $poId): int
           AND TRIM(status) IN ('PO Requested', 'PO Fulfilled')
     ");
     $stmt->execute($prIds);
+    mark_pr_linked_item_requests_status($pdo, $prIds, 'PO Approved', ['PR Requested', 'Ordered', 'PO Requested', 'PO Fulfilled']);
 
     return $stmt->rowCount();
 }

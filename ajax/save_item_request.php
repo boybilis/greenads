@@ -57,6 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   
 
     $requestId  = (int)($_POST['request_id'] ?? 0);
+    $existingSku = trim((string)($_POST['existing_sku'] ?? ''));
     $item_name  = trim((string)($_POST['item_name'] ?? ''));
     $item_color = trim((string)($_POST['item_color'] ?? ''));
     $gsmSize    = trim((string)($_POST['gsm_size'] ?? ''));
@@ -77,8 +78,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit("Quantity and unit are required");
     }
 
+    $selectedInventoryItem = null;
+    if ($existingSku !== '') {
+        $selectedStmt = $pdo->prepare("SELECT sku, material_name, color, unit, description, quantity FROM tbl_items WHERE sku = ? LIMIT 1");
+        $selectedStmt->execute([$existingSku]);
+        $selectedInventoryItem = $selectedStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$selectedInventoryItem) {
+            exit("The selected inventory SKU is no longer available. Please search and select the item again.");
+        }
+
+        $item_name = trim((string)$selectedInventoryItem['material_name']);
+        $item_color = trim((string)($selectedInventoryItem['color'] ?? ''));
+        $unit = trim((string)($selectedInventoryItem['unit'] ?? $unit));
+        if ($desc === '') {
+            $desc = trim((string)($selectedInventoryItem['description'] ?? ''));
+        }
+    }
+
     $matchingItem = find_matching_inventory_item($pdo, $item_name, $item_color);
-    if ($matchingItem) {
+    if ($matchingItem && $selectedInventoryItem === null) {
         $sku = htmlspecialchars((string)($matchingItem['sku'] ?? ''), ENT_QUOTES, 'UTF-8');
         $quantity = (float)($matchingItem['quantity'] ?? 0);
         $stock = rtrim(rtrim(number_format($quantity, 2, '.', ''), '0'), '.');
@@ -104,6 +122,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!in_array('gsm_size', $columns, true)) {
         $pdo->exec("ALTER TABLE item_requests ADD gsm_size VARCHAR(100) DEFAULT NULL AFTER item_color");
     }
+    if (!in_array('existing_sku', $columns, true)) {
+        $pdo->exec("ALTER TABLE item_requests ADD existing_sku VARCHAR(100) DEFAULT NULL AFTER item_name");
+    }
 
     $requestedBy = $userCode !== '' ? $userCode : $username;
 
@@ -124,22 +145,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $stmt = $pdo->prepare("
             UPDATE item_requests
-            SET item_name = ?, item_color = ?, gsm_size = ?, request_qty = ?, unit = ?, description = ?
+            SET item_name = ?, existing_sku = ?, item_color = ?, gsm_size = ?, request_qty = ?, unit = ?, description = ?
             WHERE id = ?
         ");
-        $stmt->execute([$item_name, $item_color, $gsmSize, $requestQty, $unit, $desc, $requestId]);
+        $stmt->execute([$item_name, $existingSku !== '' ? $existingSku : null, $item_color, $gsmSize, $requestQty, $unit, $desc, $requestId]);
 
         echo "success";
         exit;
     }
 
     $stmt = $pdo->prepare("
-        INSERT INTO item_requests (item_name, item_color, gsm_size, request_qty, unit, description, requested_by)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO item_requests (item_name, existing_sku, item_color, gsm_size, request_qty, unit, description, requested_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ");
 
     // Store requester as user_code for consistent filtering.
-    $stmt->execute([$item_name, $item_color, $gsmSize, $requestQty, $unit, $desc, $requestedBy]);
+    $stmt->execute([$item_name, $existingSku !== '' ? $existingSku : null, $item_color, $gsmSize, $requestQty, $unit, $desc, $requestedBy]);
 
     echo "success"; // IMPORTANT for toastr
 }
