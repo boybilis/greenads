@@ -2472,13 +2472,13 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 				  <table class="table table-bordered table-striped m-0" id="purchase-request-list">
 					<thead>
 					  <tr>
+						<th>Action</th>
                         <th class="pr-checkbox-column"><input type="checkbox" id="selectAllPrForPo" aria-label="Select all purchase requests"></th>
 						<th>PR No. / Date</th>
 						<th>Requested By</th>
 						<th class="pr-items-column">Items</th>
 						<th>Total Qty</th>
 						<th>Status</th>
-						<th>Action</th>
 					  </tr>
 					</thead>
 					<tbody></tbody>
@@ -2499,6 +2499,7 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 				  <table class="table table-bordered table-striped m-0" id="purchase-order-list">
 					<thead>
 					  <tr>
+						<th>Action</th>
 						<th>PO No. / Date</th>
 						<th>PR No.</th>
 						<th>Supplier</th>
@@ -2506,7 +2507,6 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 						<th>Total PO Qty</th>
 						<th>Status / Created By</th>
 						<th>Receipt No. / Date Received</th>
-						<th>Action</th>
 					  </tr>
 					</thead>
 					<tbody></tbody>
@@ -3792,19 +3792,24 @@ $(document).ready(function() {
                 order: [],
                 columns: [
                     {
+                        data: 'action',
+                        orderable: false,
+                        searchable: false,
+                        responsivePriority: 1
+                    },
+                    {
                         data: 'select_po',
                         orderable: false,
                         searchable: false,
                         width: '38px',
                         className: 'pr-checkbox-column',
-                        responsivePriority: 1
+                        responsivePriority: 2
                     },
                     { data: 'pr_display' },
                     { data: 'requested_by' },
                     { data: 'item_count', width: '58px', className: 'pr-items-column' },
                     { data: 'total_qty' },
-                    { data: 'status_badge' },
-                    { data: 'action' }
+                    { data: 'status_badge' }
                 ]
             });
         }
@@ -3816,14 +3821,14 @@ $(document).ready(function() {
                 autoWidth: false,
                 order: [],
                 columns: [
+                    { data: 'action', orderable: false, searchable: false, responsivePriority: 1 },
                     { data: 'po_display' },
                     { data: 'pr_ref_no' },
                     { data: 'supplier_name' },
                     { data: 'item_count', width: '58px', className: 'pr-items-column' },
                     { data: 'total_po_qty' },
                     { data: 'status_created_by_display' },
-                    { data: 'receipt_display' },
-                    { data: 'action' }
+                    { data: 'receipt_display' }
                 ]
             });
         }
