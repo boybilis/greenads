@@ -4201,8 +4201,8 @@ $(document).ready(function() {
                         if (isAdmin && pendingApproval) {
                             actions += `<button class="btn btn-sm btn-warning project-action-btn approve-project-btn mr-1 mb-1" data-id="${escapeHtml(data.proj_code)}" title="Approve project" aria-label="Approve project"><i class="fas fa-check" aria-hidden="true"></i></button>`;
                         }
-                        if (isAdmin && !pendingApproval) {
-                            actions += `<button class="btn btn-sm btn-danger project-action-btn delete-project-btn mr-1 mb-1" data-id="${escapeHtml(data.proj_code)}" data-name="${escapeHtml(data.proj_name || data.proj_code)}" title="Delete project" aria-label="Delete project"><i class="fas fa-times" aria-hidden="true"></i></button>`;
+                        if (isAdmin || (isManager && pendingApproval && data.proj_mgr === currentUserCode)) {
+                            actions += `<button class="btn btn-sm btn-danger project-action-btn delete-project-btn mr-1 mb-1" data-id="${escapeHtml(data.proj_code)}" data-name="${escapeHtml(data.proj_name || data.proj_code)}" data-pending="${pendingApproval ? '1' : '0'}" title="Delete project" aria-label="Delete project"><i class="fas fa-times" aria-hidden="true"></i></button>`;
                         }
                         if (isManager && pendingApproval && data.proj_mgr === currentUserCode) {
                             actions += `<button class="btn btn-sm btn-secondary project-action-btn edit-project-btn mr-1 mb-1" data-id="${escapeHtml(data.proj_code)}" title="Edit project" aria-label="Edit project"><i class="fas fa-pen" aria-hidden="true"></i></button>`;
@@ -5703,14 +5703,17 @@ $(document).on('click', '.delete-project-btn', function() {
     const $button = $(this);
     const projCode = String($button.data('id') || '');
     const projectName = String($button.data('name') || projCode);
+    const pendingApproval = String($button.data('pending')) === '1';
     if (!projCode) {
         return;
     }
 
     const confirmed = window.confirm(
         'Permanently delete "' + projectName + '"?\n\n' +
-        'This will delete its MR, PR, PO, transaction items, approvals, and files. ' +
-        'Inventory quantities will be reversed automatically. This cannot be undone.'
+        (pendingApproval
+            ? 'Its files and any connected records will also be deleted. This cannot be undone.'
+            : 'This will delete its MR, PR, PO, transaction items, approvals, and files. ' +
+              'Inventory quantities will be reversed automatically. This cannot be undone.')
     );
     if (!confirmed) {
         return;

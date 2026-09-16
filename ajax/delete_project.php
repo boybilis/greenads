@@ -5,9 +5,9 @@ require_once('audit_helper.php');
 
 header('Content-Type: application/json');
 
-if (($_SESSION['user_type'] ?? '') !== 'Admin') {
+if (!isset($_SESSION['user_code']) || !in_array($_SESSION['user_type'] ?? '', ['Admin', 'Manager'], true)) {
     http_response_code(403);
-    echo json_encode(['status' => 'error', 'message' => 'Only Admin can delete projects.']);
+    echo json_encode(['status' => 'error', 'message' => 'You cannot delete projects.']);
     exit;
 }
 
@@ -42,15 +42,17 @@ try {
     $pdo->beginTransaction();
 
     $approvalSelect = $hasApprovalColumn ? 'COALESCE(proj_approval_status, 1)' : '1';
-    $projectStmt = $pdo->prepare("SELECT proj_code, proj_name, {$approvalSelect} AS approval_status FROM tbl_project WHERE proj_code = ? FOR UPDATE");
+    $projectStmt = $pdo->prepare("SELECT proj_code, proj_name, proj_mgr, {$approvalSelect} AS approval_status FROM tbl_project WHERE proj_code = ? FOR UPDATE");
     $projectStmt->execute([$projCode]);
     $project = $projectStmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$project) {
         throw new RuntimeException('Project not found.');
     }
-    if ((int)$project['approval_status'] !== 1) {
-        throw new RuntimeException('Only approved projects can be deleted here.');
+    if (($_SESSION['user_type'] ?? '') === 'Manager'
+        && ((string)$project['proj_mgr'] !== (string)$_SESSION['user_code']
+            || (int)$project['approval_status'] !== 0)) {
+        throw new DomainException('Managers can only delete their own pending projects.');
     }
 
     $orRows = [];
@@ -270,10 +272,21 @@ try {
         'DELETE',
         'Project',
         $projCode,
-        'Deleted approved project and connected records; inventory reversed for ' . count($stockAdjustments) . ' item(s).'
+        'Deleted project and connected records; inventory reversed for ' . count($stockAdjustments) . ' item(s).'
     );
 
-    echo json_encode(['status' => 'success', 'message' => 'Project and all connected transactions were deleted. Inventory was adjusted.']);
+    echo json_encode([
+        'status' => 'success',
+        'message' => (int)$project['approval_status'] === 0
+            ? 'Pending project and its files were deleted.'
+            : 'Project and all connected transactions were deleted. Inventory was adjusted.'
+    ]);
+} catch (DomainException $e) {
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
+    http_response_code(403);
+    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
 } catch (RuntimeException $e) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
