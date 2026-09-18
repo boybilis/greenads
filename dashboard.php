@@ -215,7 +215,9 @@ tr.pending-approval-row td {
 #generatedPrTabContent th.pr-items-column,
 #generatedPrTabContent td.pr-items-column,
 #purchase-order-list th.pr-items-column,
-#purchase-order-list td.pr-items-column {
+#purchase-order-list td.pr-items-column,
+#purchaseOrderTabContent th.pr-items-column,
+#purchaseOrderTabContent td.pr-items-column {
   box-sizing: border-box;
   max-width: 58px !important;
   min-width: 58px !important;
@@ -228,7 +230,8 @@ tr.pending-approval-row td {
 #inventoryPrTabs,
 #materialRequestTabs,
 #projectTabs,
-#generatedPrTabs {
+#generatedPrTabs,
+#purchaseOrderTabs {
   border-bottom: 0;
   gap: 8px;
   padding: 10px 12px;
@@ -237,7 +240,8 @@ tr.pending-approval-row td {
 #inventoryPrTabs .nav-link,
 #materialRequestTabs .nav-link,
 #projectTabs .nav-link,
-#generatedPrTabs .nav-link {
+#generatedPrTabs .nav-link,
+#purchaseOrderTabs .nav-link {
   background: #e9ecef;
   border: 1px solid #ced4da;
   border-radius: 12px !important;
@@ -251,7 +255,8 @@ tr.pending-approval-row td {
 #inventoryPrTabs .nav-link:hover,
 #materialRequestTabs .nav-link:hover,
 #projectTabs .nav-link:hover,
-#generatedPrTabs .nav-link:hover {
+#generatedPrTabs .nav-link:hover,
+#purchaseOrderTabs .nav-link:hover {
   background: #dfe4e8;
   border-color: #adb5bd;
   color: #212529;
@@ -260,7 +265,8 @@ tr.pending-approval-row td {
 #inventoryPrTabs .nav-link.active,
 #materialRequestTabs .nav-link.active,
 #projectTabs .nav-link.active,
-#generatedPrTabs .nav-link.active {
+#generatedPrTabs .nav-link.active,
+#purchaseOrderTabs .nav-link.active {
   background: #007bff;
   border-color: #007bff !important;
   border-bottom-color: #007bff !important;
@@ -272,14 +278,16 @@ tr.pending-approval-row td {
   #inventoryPrTabs .nav-item,
   #materialRequestTabs .nav-item,
   #projectTabs .nav-item,
-  #generatedPrTabs .nav-item {
+  #generatedPrTabs .nav-item,
+  #purchaseOrderTabs .nav-item {
     flex: 1 1 100%;
   }
 
   #inventoryPrTabs .nav-link,
   #materialRequestTabs .nav-link,
   #projectTabs .nav-link,
-  #generatedPrTabs .nav-link {
+  #generatedPrTabs .nav-link,
+  #purchaseOrderTabs .nav-link {
     text-align: center;
   }
 }
@@ -2562,23 +2570,26 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 			  <div class="card-header border-success">
 				<h3 class="card-title">PO Request List</h3>
 			  </div>
+			  <div class="card-header p-0 border-bottom-0 bg-light">
+				<ul class="nav nav-tabs" id="purchaseOrderTabs" role="tablist">
+				  <li class="nav-item"><a class="nav-link active" id="po-for-approval-tab" data-toggle="tab" href="#po-for-approval-pane" role="tab" aria-controls="po-for-approval-pane" aria-selected="true">PO for Approval</a></li>
+				  <li class="nav-item"><a class="nav-link" id="po-approved-tab" data-toggle="tab" href="#po-approved-pane" role="tab" aria-controls="po-approved-pane" aria-selected="false">Approved PO</a></li>
+				</ul>
+			  </div>
 			  <div class="card-body p-3">
-				<div class="table-responsive">
-				  <table class="table table-bordered table-striped m-0" id="purchase-order-list">
-					<thead>
-					  <tr>
-						<th>Action</th>
-						<th>PO No. / Date</th>
-						<th>PR No.</th>
-						<th>Supplier</th>
-						<th class="pr-items-column">Items</th>
-						<th>Total PO Qty</th>
-						<th>Status / Created By</th>
-						<th>Receipt No. / Date Received</th>
-					  </tr>
-					</thead>
-					<tbody></tbody>
-				  </table>
+				<div class="tab-content" id="purchaseOrderTabContent">
+				  <?php foreach (['for-approval' => 'purchase-order-list', 'approved' => 'approved-purchase-order-list'] as $poTab => $poTableId): ?>
+					<div class="tab-pane fade<?= $poTab === 'for-approval' ? ' show active' : '' ?>" id="po-<?= $poTab ?>-pane" role="tabpanel" aria-labelledby="po-<?= $poTab ?>-tab">
+					  <div class="table-responsive">
+						<table class="table table-bordered table-striped m-0" id="<?= $poTableId ?>">
+						  <thead><tr>
+							<th>Action</th><th>PO No. / Date</th><th>PR No.</th><th>Supplier</th><th class="pr-items-column">Items</th><th>Total PO Qty</th><th>Status / Created By</th><th>Receipt No. / Date Received</th>
+						  </tr></thead>
+						  <tbody></tbody>
+						</table>
+					  </div>
+					</div>
+				  <?php endforeach; ?>
 				</div>
 			  </div>
 			</div>
@@ -3484,7 +3495,14 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <script src="dist/js/pages/dashboard2.js"></script>
 
 <script>
-let itemspo, stocktable, inventorytable, invInHistoryTable, invOutHistoryTable, inventoryMonthlySummaryTable, projecttable, projectMrReportTable, managerMonthlyProjectTable, adminManagerReportTable, supplierTable, purchaseRequestTable, inventoryPurchaseRequestTable, inventoryPoRequestedTable, purchaseOrderTable, userTable, auditLogTable;
+let itemspo, stocktable, inventorytable, invInHistoryTable, invOutHistoryTable, inventoryMonthlySummaryTable, projecttable, projectMrReportTable, managerMonthlyProjectTable, adminManagerReportTable, supplierTable, purchaseRequestTable, inventoryPurchaseRequestTable, inventoryPoRequestedTable, userTable, auditLogTable;
+const purchaseOrderTables = {};
+const purchaseOrderTableIds = { 'for-approval': 'purchase-order-list', approved: 'approved-purchase-order-list' };
+function reloadPurchaseOrderTables() {
+    Object.values(purchaseOrderTables).forEach(function(table) {
+        window.reloadDataTable(table);
+    });
+}
 const projectTables = {};
 const projectTableIds = { pending: 'project-list', ongoing: 'project-ongoing-list', completed: 'project-completed-list' };
 function reloadProjectTables() {
@@ -3869,6 +3887,39 @@ $(document).ready(function() {
         }
     }
 
+    function initPurchaseOrderTable(status) {
+        if (purchaseOrderTables[status] || !purchaseOrderTableIds[status]) return purchaseOrderTables[status];
+        const $table = $('#' + purchaseOrderTableIds[status]);
+        if (!$table.length) return null;
+        purchaseOrderTables[status] = $table.DataTable({
+            ajax: 'ajax/fetch_purchase_orders.php?approval_filter=' + encodeURIComponent(status),
+            responsive: true,
+            autoWidth: false,
+            order: [],
+            columns: [
+                { data: 'action', orderable: false, searchable: false, responsivePriority: 1 },
+                { data: 'po_display' },
+                { data: 'pr_ref_no' },
+                { data: 'supplier_name' },
+                { data: 'item_count', width: '58px', className: 'pr-items-column' },
+                { data: 'total_po_qty' },
+                { data: 'status_created_by_display' },
+                { data: 'receipt_display' }
+            ]
+        });
+        return purchaseOrderTables[status];
+    }
+
+    $(document).on('shown.bs.tab', '#purchaseOrderTabs a[data-toggle="tab"]', function() {
+        const status = this.id.replace(/^po-|-tab$/g, '');
+        const existing = purchaseOrderTables[status];
+        const table = initPurchaseOrderTable(status);
+        if (!table) return;
+        table.columns.adjust();
+        if (table.responsive) table.responsive.recalc();
+        if (existing) table.ajax.reload(null, false);
+    });
+
     function initPurchasingSection() {
         if (!supplierTable && $('#supplier-list').length) {
             supplierTable = $('#supplier-list').DataTable({
@@ -3923,24 +3974,8 @@ $(document).ready(function() {
             });
         }
 
-        if (!purchaseOrderTable && $('#purchase-order-list').length) {
-            purchaseOrderTable = $('#purchase-order-list').DataTable({
-                ajax: 'ajax/fetch_purchase_orders.php',
-                responsive: true,
-                autoWidth: false,
-                order: [],
-                columns: [
-                    { data: 'action', orderable: false, searchable: false, responsivePriority: 1 },
-                    { data: 'po_display' },
-                    { data: 'pr_ref_no' },
-                    { data: 'supplier_name' },
-                    { data: 'item_count', width: '58px', className: 'pr-items-column' },
-                    { data: 'total_po_qty' },
-                    { data: 'status_created_by_display' },
-                    { data: 'receipt_display' }
-                ]
-            });
-        }
+        const activePoStatus = $('#purchaseOrderTabs .nav-link.active').attr('id')?.replace(/^po-|-tab$/g, '') || 'for-approval';
+        initPurchaseOrderTable(activePoStatus);
     }
 
     function initSettingSection() {
@@ -4542,7 +4577,7 @@ $(document).ready(function() {
                 if (refresh) {
                     reloadDataTable(supplierTable);
                     reloadDataTable(purchaseRequestTable);
-                    reloadDataTable(purchaseOrderTable);
+                    reloadPurchaseOrderTables();
                 }
                 break;
             case 'report':
@@ -7109,9 +7144,7 @@ $(document).on('click', '#savePoBtn', function () {
                 if (inventoryPurchaseRequestTable) {
                     reloadDataTable(inventoryPurchaseRequestTable);
                 }
-                if (purchaseOrderTable) {
-                    reloadDataTable(purchaseOrderTable);
-                }
+                reloadPurchaseOrderTables();
             } else {
                 toastr.error(res.message || 'Failed to save purchase order.');
             }
@@ -7168,9 +7201,7 @@ $(document).on('click', '.receive-pr-items', function(e) {
                 if (purchaseRequestTable) {
                     reloadDataTable(purchaseRequestTable);
                 }
-                if (purchaseOrderTable) {
-                    reloadDataTable(purchaseOrderTable);
-                }
+                reloadPurchaseOrderTables();
             } else {
                 toastr.error(res.message || 'Failed to mark items received.');
             }
@@ -7254,9 +7285,7 @@ $(document).on('click', '.approve-po', function(e) {
         success: function(res) {
             if (res.status === 'success') {
                 toastr.success(res.message || 'PO approved.');
-                if (purchaseOrderTable) {
-                    reloadDataTable(purchaseOrderTable);
-                }
+                reloadPurchaseOrderTables();
                 if (inventoryPurchaseRequestTable) {
                     reloadDataTable(inventoryPurchaseRequestTable);
                 }
@@ -7292,9 +7321,7 @@ $(document).on('click', '.delete-po-request', function(e) {
         success: function(res) {
             if (res.status === 'success') {
                 toastr.success(res.message || 'Purchase order deleted.');
-                if (purchaseOrderTable) {
-                    reloadDataTable(purchaseOrderTable);
-                }
+                reloadPurchaseOrderTables();
                 if (purchaseRequestTable) {
                     reloadDataTable(purchaseRequestTable);
                 }
@@ -7335,9 +7362,7 @@ $(document).on('click', '.cancel-po-request', function(e) {
         success: function(res) {
             if (res.status === 'success') {
                 toastr.success(res.message || 'PO request cancelled.');
-                if (purchaseOrderTable) {
-                    reloadDataTable(purchaseOrderTable);
-                }
+                reloadPurchaseOrderTables();
                 if (purchaseRequestTable) {
                     reloadDataTable(purchaseRequestTable);
                 }
@@ -7373,7 +7398,7 @@ $('#fulfillPoForm').on('submit', function(e) {
             if (res.status === 'success') {
                 toastr.success(res.message);
                 $('#fulfillPoModal').modal('hide');
-                reloadDataTable(purchaseOrderTable);
+                reloadPurchaseOrderTables();
                 if (purchaseRequestTable) {
                     reloadDataTable(purchaseRequestTable);
                 }

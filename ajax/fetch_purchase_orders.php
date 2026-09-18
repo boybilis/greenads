@@ -81,6 +81,16 @@ try {
     sync_approved_po_pr_statuses($pdo);
     sync_verified_po_pr_statuses($pdo);
 
+    $approvalFilter = $_GET['approval_filter'] ?? '';
+    if (!is_string($approvalFilter) || !in_array($approvalFilter, ['', 'for-approval', 'approved'], true)) {
+        http_response_code(400);
+        echo json_encode(['data' => [], 'message' => 'Invalid approval filter.']);
+        exit;
+    }
+    $approvalWhere = $approvalFilter === 'approved'
+        ? "WHERE COALESCE(po.approval_status, 'Pending') = 'Approved'"
+        : ($approvalFilter === 'for-approval' ? "WHERE COALESCE(po.approval_status, 'Pending') <> 'Approved'" : '');
+
     $stmt = $pdo->query("
         SELECT
             po.po_id,
@@ -104,6 +114,7 @@ try {
             FROM tbl_purchase_order_items
             GROUP BY po_id
         ) poi_tot ON poi_tot.po_id = po.po_id
+        {$approvalWhere}
         GROUP BY po.po_id, po.po_ref_no, pr.pr_ref_no, po.po_date, po.receipt_no, po.date_received, po.fulfillment_status, po.approval_status, s.supplier_name, po.created_by, poi_tot.item_count, poi_tot.total_po_qty
         ORDER BY po.po_id DESC
     ");
