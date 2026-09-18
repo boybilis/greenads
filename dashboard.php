@@ -94,6 +94,46 @@ $projectApprovalFilterSql = $hasProjectApprovalColumn ? "COALESCE(proj_approval_
   border-bottom: 1px solid #ddd;
 }
 
+#claimedMrPdfModal .modal-dialog {
+  width: 96vw;
+  max-width: none;
+  margin: 2vh auto;
+}
+
+#claimedMrPdfModal .modal-content {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: none;
+  height: 96vh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+#claimedMrPdfModal .modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+#claimedMrPdfFrame {
+  width: 100%;
+  height: 100%;
+}
+
+@media (max-width: 768px) {
+  #claimedMrPdfModal .modal-dialog {
+    width: 100vw;
+    margin: 0;
+  }
+
+  #claimedMrPdfModal .modal-content {
+    height: 100vh;
+    height: 100dvh;
+    border-radius: 0;
+  }
+}
+
 
 
 table.dataTable th,
@@ -3317,14 +3357,14 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <!-- end POmodal -->
 
 <div class="modal fade" id="claimedMrPdfModal" tabindex="-1" role="dialog" aria-labelledby="claimedMrPdfTitle" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-dialog-centered" role="document">
+  <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="claimedMrPdfTitle">Material Request PDF Preview</h5>
         <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
       </div>
       <div class="modal-body p-0">
-        <iframe id="claimedMrPdfFrame" title="Material Request PDF Preview" style="display:block;width:100%;height:70vh;border:0;"></iframe>
+        <iframe id="claimedMrPdfFrame" title="Material Request PDF Preview" style="display:block;border:0;"></iframe>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
