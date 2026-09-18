@@ -72,6 +72,33 @@ try {
         $where .= ($where === '' ? 'WHERE ' : ' AND ') . "TRIM(COALESCE(pr.status, 'Pending')) NOT IN ('PO Requested', 'PO Approved', 'PO Fulfilled')";
     }
 
+    $generatedStatuses = [
+        'pending' => 'Pending',
+        'po-requested' => 'PO Requested',
+        'po-approved' => 'PO Approved',
+        'po-fulfilled' => 'PO Fulfilled',
+        'encoded' => 'Encoded',
+        'for-pickup' => 'For Pickup',
+        'completed' => 'Completed'
+    ];
+    $generatedStatus = $_GET['generated_status'] ?? '';
+    if (!is_string($generatedStatus) || ($generatedStatus !== '' && $generatedStatus !== 'other' && !array_key_exists($generatedStatus, $generatedStatuses))) {
+        http_response_code(400);
+        echo json_encode(['data' => [], 'message' => 'Invalid status filter.']);
+        exit;
+    }
+    if ($generatedStatus !== '') {
+        $statusExpression = "COALESCE(NULLIF(TRIM(pr.status), ''), 'Pending')";
+        if ($generatedStatus === 'other') {
+            $knownStatuses = implode(', ', array_fill(0, count($generatedStatuses), '?'));
+            $where .= ($where === '' ? 'WHERE ' : ' AND ') . "$statusExpression NOT IN ($knownStatuses)";
+            array_push($params, ...array_values($generatedStatuses));
+        } else {
+            $where .= ($where === '' ? 'WHERE ' : ' AND ') . "$statusExpression = ?";
+            $params[] = $generatedStatuses[$generatedStatus];
+        }
+    }
+
     $stmt = $pdo->prepare("
         SELECT
             pr.pr_id,
@@ -108,7 +135,7 @@ try {
 
     $data = [];
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        $status = $row['status'] ?: 'Pending';
+        $status = trim((string)($row['status'] ?? '')) ?: 'Pending';
         $prRefNo = $row['pr_ref_no'] ?: ('PR-' . str_pad((string)$row['pr_id'], 6, '0', STR_PAD_LEFT));
         $requestDateDisplay = !empty($row['request_date']) ? date('M d, Y', strtotime($row['request_date'])) : '-';
         $prDisplay = htmlspecialchars($prRefNo) . '<br><small class="text-muted">' . htmlspecialchars($requestDateDisplay) . '</small>';

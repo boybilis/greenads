@@ -212,8 +212,8 @@ tr.pending-approval-row td {
 #inventory-pr-list td.pr-items-column,
 #inventory-po-requested-pr-list th.pr-items-column,
 #inventory-po-requested-pr-list td.pr-items-column,
-#my-generated-pr-list th.pr-items-column,
-#my-generated-pr-list td.pr-items-column,
+#generatedPrTabContent th.pr-items-column,
+#generatedPrTabContent td.pr-items-column,
 #purchase-order-list th.pr-items-column,
 #purchase-order-list td.pr-items-column {
   box-sizing: border-box;
@@ -227,7 +227,8 @@ tr.pending-approval-row td {
 
 #inventoryPrTabs,
 #materialRequestTabs,
-#projectTabs {
+#projectTabs,
+#generatedPrTabs {
   border-bottom: 0;
   gap: 8px;
   padding: 10px 12px;
@@ -235,7 +236,8 @@ tr.pending-approval-row td {
 
 #inventoryPrTabs .nav-link,
 #materialRequestTabs .nav-link,
-#projectTabs .nav-link {
+#projectTabs .nav-link,
+#generatedPrTabs .nav-link {
   background: #e9ecef;
   border: 1px solid #ced4da;
   border-radius: 12px !important;
@@ -248,7 +250,8 @@ tr.pending-approval-row td {
 
 #inventoryPrTabs .nav-link:hover,
 #materialRequestTabs .nav-link:hover,
-#projectTabs .nav-link:hover {
+#projectTabs .nav-link:hover,
+#generatedPrTabs .nav-link:hover {
   background: #dfe4e8;
   border-color: #adb5bd;
   color: #212529;
@@ -256,7 +259,8 @@ tr.pending-approval-row td {
 
 #inventoryPrTabs .nav-link.active,
 #materialRequestTabs .nav-link.active,
-#projectTabs .nav-link.active {
+#projectTabs .nav-link.active,
+#generatedPrTabs .nav-link.active {
   background: #007bff;
   border-color: #007bff !important;
   border-bottom-color: #007bff !important;
@@ -267,13 +271,15 @@ tr.pending-approval-row td {
 @media (max-width: 575.98px) {
   #inventoryPrTabs .nav-item,
   #materialRequestTabs .nav-item,
-  #projectTabs .nav-item {
+  #projectTabs .nav-item,
+  #generatedPrTabs .nav-item {
     flex: 1 1 100%;
   }
 
   #inventoryPrTabs .nav-link,
   #materialRequestTabs .nav-link,
-  #projectTabs .nav-link {
+  #projectTabs .nav-link,
+  #generatedPrTabs .nav-link {
     text-align: center;
   }
 }
@@ -1666,22 +1672,27 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
               <div class="card-header border-warning bg-light">
                 <h3 class="card-title">Generated PR Requests (<?php echo (($_SESSION['user_type'] ?? '') === 'Admin') ? 'All Requests' : 'My Requests'; ?>)</h3>
               </div>
+              <div class="card-header p-0 border-bottom-0 bg-light">
+                <ul class="nav nav-tabs" id="generatedPrTabs" role="tablist">
+                  <?php foreach (['pending' => 'Pending', 'po-requested' => 'PO Requested', 'po-approved' => 'PO Approved', 'po-fulfilled' => 'PO Fulfilled', 'encoded' => 'Encoded', 'for-pickup' => 'For Pickup', 'completed' => 'Completed', 'other' => 'Other'] as $prTab => $prLabel): ?>
+                    <li class="nav-item"><a class="nav-link<?= $prTab === 'pending' ? ' active' : '' ?>" id="generated-pr-<?= $prTab ?>-tab" data-toggle="tab" href="#generated-pr-<?= $prTab ?>-pane" role="tab" aria-controls="generated-pr-<?= $prTab ?>-pane" aria-selected="<?= $prTab === 'pending' ? 'true' : 'false' ?>"><?= htmlspecialchars($prLabel) ?></a></li>
+                  <?php endforeach; ?>
+                </ul>
+              </div>
               <div class="card-body p-3">
-                <div class="table-responsive">
-                  <table class="table table-bordered table-striped m-0" id="my-generated-pr-list">
-                    <thead>
-                      <tr>
-                        <th>PR No. / Date</th>
-                        <th>Project Code</th>
-                        <th>Requested By</th>
-                        <th class="pr-items-column">Items</th>
-                        <th>Total Qty</th>
-                        <th>Status</th>
-                        <th>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody></tbody>
-                  </table>
+                <div class="tab-content" id="generatedPrTabContent">
+                  <?php foreach (['pending', 'po-requested', 'po-approved', 'po-fulfilled', 'encoded', 'for-pickup', 'completed', 'other'] as $prTab): ?>
+                    <div class="tab-pane fade<?= $prTab === 'pending' ? ' show active' : '' ?>" id="generated-pr-<?= $prTab ?>-pane" role="tabpanel" aria-labelledby="generated-pr-<?= $prTab ?>-tab">
+                      <div class="table-responsive">
+                        <table class="table table-bordered table-striped m-0" id="generated-pr-<?= $prTab ?>-list">
+                          <thead><tr>
+                            <th>PR No. / Date</th><th>Project Code</th><th>Requested By</th><th class="pr-items-column">Items</th><th>Total Qty</th><th>Status</th><th>Action</th>
+                          </tr></thead>
+                          <tbody></tbody>
+                        </table>
+                      </div>
+                    </div>
+                  <?php endforeach; ?>
                 </div>
               </div>
             </div>
@@ -3488,7 +3499,13 @@ function reloadMaterialRequestTables() {
         window.reloadDataTable(table);
     });
 }
-let myGeneratedPrTable;
+const generatedPrTables = {};
+const generatedPrStatuses = ['pending', 'po-requested', 'po-approved', 'po-fulfilled', 'encoded', 'for-pickup', 'completed', 'other'];
+function reloadGeneratedPrTables() {
+    Object.values(generatedPrTables).forEach(function(table) {
+        window.reloadDataTable(table);
+    });
+}
 let encodePrItemsCache = {};
 let pendingEncodeAfterProductSave = null;
 $(document).ready(function() {
@@ -4451,13 +4468,12 @@ $(document).ready(function() {
         if (existing) table.ajax.reload(null, false);
     });
 
-    function initOrderSection() {
-        const activeStatus = $('#materialRequestTabs .nav-link.active').attr('id')?.replace(/^mr-|-tab$/g, '') || 'pending';
-        initMaterialRequestTable(activeStatus);
-
-        if (!myGeneratedPrTable && $('#my-generated-pr-list').length) {
-            myGeneratedPrTable = $('#my-generated-pr-list').DataTable({
-                ajax: 'ajax/fetch_my_purchase_requests.php?mine=1',
+    function initGeneratedPrTable(status) {
+        if (generatedPrTables[status] || !generatedPrStatuses.includes(status)) return generatedPrTables[status];
+        const $table = $('#generated-pr-' + status + '-list');
+        if (!$table.length) return null;
+        generatedPrTables[status] = $table.DataTable({
+                ajax: 'ajax/fetch_my_purchase_requests.php?mine=1&generated_status=' + encodeURIComponent(status),
                 responsive: true,
                 autoWidth: false,
                 order: [],
@@ -4471,7 +4487,24 @@ $(document).ready(function() {
                     { data: 'action' }
                 ]
             });
-        }
+        return generatedPrTables[status];
+    }
+
+    $(document).on('shown.bs.tab', '#generatedPrTabs a[data-toggle="tab"]', function() {
+        const status = this.id.replace(/^generated-pr-|-tab$/g, '');
+        const existing = generatedPrTables[status];
+        const table = initGeneratedPrTable(status);
+        if (!table) return;
+        table.columns.adjust();
+        if (table.responsive) table.responsive.recalc();
+        if (existing) table.ajax.reload(null, false);
+    });
+
+    function initOrderSection() {
+        const activeStatus = $('#materialRequestTabs .nav-link.active').attr('id')?.replace(/^mr-|-tab$/g, '') || 'pending';
+        initMaterialRequestTable(activeStatus);
+        const activePrStatus = $('#generatedPrTabs .nav-link.active').attr('id')?.replace(/^generated-pr-|-tab$/g, '') || 'pending';
+        initGeneratedPrTable(activePrStatus);
     }
 
     function loadDashboardSection(target, refresh = false) {
@@ -4491,7 +4524,7 @@ $(document).ready(function() {
                 initOrderSection();
                 if (refresh) {
                     reloadMaterialRequestTables();
-                    reloadDataTable(myGeneratedPrTable);
+                    reloadGeneratedPrTables();
                 }
                 $(document).trigger('material-request-section-opened');
                 break;
@@ -5394,9 +5427,7 @@ $("#orForm").on("submit", function(e) {
         if (inventoryPurchaseRequestTable) {
           reloadDataTable(inventoryPurchaseRequestTable);
         }
-        if (myGeneratedPrTable) {
-          reloadDataTable(myGeneratedPrTable);
-        }
+        reloadGeneratedPrTables();
 
       } else {
         toastr.error(res.message);
@@ -7178,9 +7209,7 @@ $(document).on('click', '.delete-pr-request', function(e) {
                 if (inventoryPurchaseRequestTable) {
                     reloadDataTable(inventoryPurchaseRequestTable);
                 }
-                if (myGeneratedPrTable) {
-                    reloadDataTable(myGeneratedPrTable);
-                }
+                reloadGeneratedPrTables();
             } else {
                 toastr.error(res.message || 'Delete failed.');
             }
@@ -7196,9 +7225,7 @@ $(document).on('click', '.delete-pr-request', function(e) {
                 if (inventoryPurchaseRequestTable) {
                     reloadDataTable(inventoryPurchaseRequestTable);
                 }
-                if (myGeneratedPrTable) {
-                    reloadDataTable(myGeneratedPrTable);
-                }
+                reloadGeneratedPrTables();
             }
         }
     });
@@ -7274,9 +7301,7 @@ $(document).on('click', '.delete-po-request', function(e) {
                 if (inventoryPurchaseRequestTable) {
                     reloadDataTable(inventoryPurchaseRequestTable);
                 }
-                if (myGeneratedPrTable) {
-                    reloadDataTable(myGeneratedPrTable);
-                }
+                reloadGeneratedPrTables();
             } else {
                 toastr.error(res.message || 'Delete failed.');
             }
@@ -7319,9 +7344,7 @@ $(document).on('click', '.cancel-po-request', function(e) {
                 if (inventoryPurchaseRequestTable) {
                     reloadDataTable(inventoryPurchaseRequestTable);
                 }
-                if (myGeneratedPrTable) {
-                    reloadDataTable(myGeneratedPrTable);
-                }
+                reloadGeneratedPrTables();
             } else {
                 toastr.error(res.message || 'Cancel failed.');
             }
