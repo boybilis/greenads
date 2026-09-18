@@ -3316,6 +3316,25 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 </div>
 <!-- end POmodal -->
 
+<div class="modal fade" id="claimedMrPdfModal" tabindex="-1" role="dialog" aria-labelledby="claimedMrPdfTitle" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="claimedMrPdfTitle">Material Request PDF Preview</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+      </div>
+      <div class="modal-body p-0">
+        <iframe id="claimedMrPdfFrame" title="Material Request PDF Preview" style="display:block;width:100%;height:70vh;border:0;"></iframe>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-outline-primary" id="downloadClaimedMrPdf"><i class="fas fa-download mr-1"></i> Download PDF</button>
+        <button type="button" class="btn btn-primary" id="printClaimedMrPdf"><i class="fas fa-print mr-1"></i> Print</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal fade" id="fulfillPoModal" tabindex="-1" role="dialog" aria-hidden="true">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
@@ -3386,6 +3405,8 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <!-- ChartJS -->
 <script src="plugins/chart.js/Chart.min.js"></script>
 <script src="plugins/toastr/toastr.min.js"></script>
+<script src="plugins/pdfmake/pdfmake.min.js"></script>
+<script src="plugins/pdfmake/vfs_fonts.js"></script>
 <!--datatables -->
 
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
@@ -4206,6 +4227,12 @@ $(document).ready(function() {
                         }
                         if (isManager && pendingApproval && data.proj_mgr === currentUserCode) {
                             actions += `<button class="btn btn-sm btn-secondary project-action-btn edit-project-btn mr-1 mb-1" data-id="${escapeHtml(data.proj_code)}" title="Edit project" aria-label="Edit project"><i class="fas fa-pen" aria-hidden="true"></i></button>`;
+                        }
+                        const canComplete = !pendingApproval
+                            && parseInt(data.proj_status, 10) === 0
+                            && (isAdmin || (isManager && data.proj_mgr === currentUserCode));
+                        if (canComplete) {
+                            actions += `<button class="btn btn-sm btn-success project-action-btn complete-project-btn mr-1 mb-1" data-id="${escapeHtml(data.proj_code)}" data-name="${escapeHtml(data.proj_name || data.proj_code)}" title="Mark project complete" aria-label="Mark project complete"><i class="fas fa-flag-checkered" aria-hidden="true"></i></button>`;
                         }
 
                         actions += `
@@ -5499,6 +5526,123 @@ $(document).on("click", ".edit-or", function(e) {
 
 
 
+let claimedMrPdf = null;
+let claimedMrPdfUrl = null;
+let claimedMrPdfFilename = '';
+let claimedMrPdfVersion = 0;
+
+function claimedMrPdfText(value) {
+    return String(value == null || value === '' ? '-' : value);
+}
+
+function claimedMrPdfMoney(value) {
+    const amount = Number(String(value == null ? 0 : value).replace(/,/g, ''));
+    return Number.isFinite(amount) ? amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00';
+}
+
+function showClaimedMrPdf(data, items) {
+    if (!window.pdfMake) {
+        toastr.error('PDF preview is unavailable. Please refresh the page and try again.');
+        return;
+    }
+
+    const rows = [[
+        { text: 'SKU', style: 'tableHeader' },
+        { text: 'Item', style: 'tableHeader' },
+        { text: 'Qty', style: 'tableHeader', alignment: 'right' },
+        { text: 'Unit', style: 'tableHeader' },
+        { text: 'Unit Price', style: 'tableHeader', alignment: 'right' },
+        { text: 'Amount', style: 'tableHeader', alignment: 'right' }
+    ]];
+    (Array.isArray(items) ? items : []).forEach(function(item) {
+        rows.push([
+            claimedMrPdfText(item.sku),
+            claimedMrPdfText(item.item_name),
+            { text: claimedMrPdfMoney(item.qty), alignment: 'right' },
+            claimedMrPdfText(item.unit),
+            { text: claimedMrPdfMoney(item.unit_price), alignment: 'right' },
+            { text: claimedMrPdfMoney(item.amount), alignment: 'right' }
+        ]);
+    });
+    if (rows.length === 1) {
+        rows.push([{ text: 'No items found.', colSpan: 6, alignment: 'center', color: '#6c757d' }, {}, {}, {}, {}, {}]);
+    }
+
+    const mrNo = claimedMrPdfText(data.or_no);
+    const documentDefinition = {
+        pageSize: 'A4',
+        pageMargins: [36, 42, 36, 44],
+        content: [
+            { text: 'GREEN ADS AND PROMATS, INC.', style: 'company' },
+            { text: 'MATERIAL REQUEST', style: 'title', margin: [0, 3, 0, 4] },
+            { text: 'Approved and Claimed', style: 'claimedStatus', margin: [0, 0, 0, 18] },
+            { columns: [
+                { width: '*', stack: [
+                    { text: 'MR No.', style: 'fieldLabel' }, { text: mrNo, style: 'fieldValue' },
+                    { text: 'Project', style: 'fieldLabel', margin: [0, 10, 0, 0] },
+                    { text: claimedMrPdfText(data.proj_name) + ' (' + claimedMrPdfText(data.proj_code) + ')', style: 'fieldValue' }
+                ] },
+                { width: '*', stack: [
+                    { text: 'Request Date', style: 'fieldLabel' }, { text: claimedMrPdfText(data.or_date), style: 'fieldValue' },
+                    { text: 'Department', style: 'fieldLabel', margin: [0, 10, 0, 0] }, { text: claimedMrPdfText(data.dept_code), style: 'fieldValue' }
+                ] }
+            ], columnGap: 20, margin: [0, 0, 0, 12] },
+            { text: 'Prepared by: ' + claimedMrPdfText(data.prepared_by), margin: [0, 0, 0, 5] },
+            { text: 'Remarks: ' + claimedMrPdfText(data.remarks), margin: [0, 0, 0, 18] },
+            { table: { headerRows: 1, widths: [65, '*', 42, 48, 68, 72], body: rows }, layout: 'lightHorizontalLines' },
+            { columns: [
+                { text: 'Grand Total', bold: true, alignment: 'right' },
+                { text: claimedMrPdfMoney(data.grand_total), bold: true, alignment: 'right', width: 85 }
+            ], margin: [0, 14, 0, 0] }
+        ],
+        footer: function(currentPage, pageCount) {
+            return { text: 'Page ' + currentPage + ' of ' + pageCount, alignment: 'right', margin: [36, 0, 36, 0], fontSize: 8, color: '#6c757d' };
+        },
+        styles: {
+            company: { fontSize: 10, bold: true, color: '#198754' },
+            title: { fontSize: 20, bold: true, color: '#212529' },
+            claimedStatus: { fontSize: 9, bold: true, color: '#0d6efd' },
+            fieldLabel: { fontSize: 8, color: '#6c757d' },
+            fieldValue: { fontSize: 10, bold: true },
+            tableHeader: { bold: true, fillColor: '#e9f4ed', color: '#212529' }
+        },
+        defaultStyle: { fontSize: 9 }
+    };
+
+    claimedMrPdf = pdfMake.createPdf(documentDefinition);
+    const previewVersion = ++claimedMrPdfVersion;
+    claimedMrPdfFilename = (mrNo.replace(/[^A-Za-z0-9_-]/g, '_') || 'material_request') + '.pdf';
+    $('#claimedMrPdfTitle').text(mrNo + ' - PDF Preview');
+    $('#claimedMrPdfFrame').attr('src', 'about:blank');
+    $('#claimedMrPdfModal').modal('show');
+    claimedMrPdf.getBlob(function(blob) {
+        if (previewVersion !== claimedMrPdfVersion) {
+            return;
+        }
+        if (claimedMrPdfUrl) {
+            URL.revokeObjectURL(claimedMrPdfUrl);
+        }
+        claimedMrPdfUrl = URL.createObjectURL(blob);
+        $('#claimedMrPdfFrame').attr('src', claimedMrPdfUrl);
+    });
+}
+
+$('#downloadClaimedMrPdf').on('click', function() {
+    if (claimedMrPdf) claimedMrPdf.download(claimedMrPdfFilename);
+});
+
+$('#printClaimedMrPdf').on('click', function() {
+    if (claimedMrPdf) claimedMrPdf.print();
+});
+
+$('#claimedMrPdfModal').on('hidden.bs.modal', function() {
+    claimedMrPdfVersion++;
+    $('#claimedMrPdfFrame').attr('src', 'about:blank');
+    if (claimedMrPdfUrl) URL.revokeObjectURL(claimedMrPdfUrl);
+    claimedMrPdfUrl = null;
+    claimedMrPdf = null;
+});
+
 //view order Request
 $(document).on("click", ".view-or", function(e) {
   e.preventDefault();
@@ -5515,6 +5659,11 @@ $(document).on("click", ".view-or", function(e) {
 
         let data = res.data;
         let items = res.items;
+
+        if (parseInt(data.or_status, 10) === 3) {
+          showClaimedMrPdf(data, items);
+          return;
+        }
 
         $("#or_id").val(data.or_id);
         $("input[name='or_no']").val(data.or_no);
@@ -5695,6 +5844,44 @@ $(document).on('click', '.approve-project-btn', function() {
         },
         error: function() {
             toastr.error('Approval failed.');
+        }
+    });
+});
+
+$(document).on('click', '.complete-project-btn', function() {
+    const $button = $(this);
+    const projCode = String($button.data('id') || '');
+    const projectName = String($button.data('name') || projCode);
+    if (!projCode) {
+        toastr.error('Invalid project reference.');
+        return;
+    }
+
+    if (!window.confirm('Mark "' + projectName + '" as completed?')) {
+        return;
+    }
+
+    $.ajax({
+        url: 'ajax/complete_project.php',
+        type: 'POST',
+        dataType: 'json',
+        data: { proj_code: projCode },
+        beforeSend: function() {
+            $button.prop('disabled', true);
+        },
+        success: function(response) {
+            if (response.status === 'success') {
+                toastr.success(response.message || 'Project marked as completed.');
+                reloadDataTable(projecttable);
+            } else {
+                toastr.error(response.message || 'Unable to complete project.');
+            }
+        },
+        error: function(xhr) {
+            toastr.error(xhr.responseJSON?.message || 'Unable to complete project.');
+        },
+        complete: function() {
+            $button.prop('disabled', false);
         }
     });
 });
