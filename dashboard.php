@@ -225,13 +225,15 @@ tr.pending-approval-row td {
   width: 58px !important;
 }
 
-#inventoryPrTabs {
+#inventoryPrTabs,
+#materialRequestTabs {
   border-bottom: 0;
   gap: 8px;
   padding: 10px 12px;
 }
 
-#inventoryPrTabs .nav-link {
+#inventoryPrTabs .nav-link,
+#materialRequestTabs .nav-link {
   background: #e9ecef;
   border: 1px solid #ced4da;
   border-radius: 12px !important;
@@ -242,13 +244,15 @@ tr.pending-approval-row td {
   transition: background-color .2s ease, border-color .2s ease, color .2s ease;
 }
 
-#inventoryPrTabs .nav-link:hover {
+#inventoryPrTabs .nav-link:hover,
+#materialRequestTabs .nav-link:hover {
   background: #dfe4e8;
   border-color: #adb5bd;
   color: #212529;
 }
 
-#inventoryPrTabs .nav-link.active {
+#inventoryPrTabs .nav-link.active,
+#materialRequestTabs .nav-link.active {
   background: #007bff;
   border-color: #007bff !important;
   border-bottom-color: #007bff !important;
@@ -257,11 +261,13 @@ tr.pending-approval-row td {
 }
 
 @media (max-width: 575.98px) {
-  #inventoryPrTabs .nav-item {
+  #inventoryPrTabs .nav-item,
+  #materialRequestTabs .nav-item {
     flex: 1 1 100%;
   }
 
-  #inventoryPrTabs .nav-link {
+  #inventoryPrTabs .nav-link,
+  #materialRequestTabs .nav-link {
     text-align: center;
   }
 }
@@ -1615,23 +1621,28 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 </div>
               </div>
               <!-- /.card-header -->
+              <div class="card-header p-0 border-bottom-0 bg-light">
+                <ul class="nav nav-tabs" id="materialRequestTabs" role="tablist">
+                  <li class="nav-item"><a class="nav-link active" id="mr-pending-tab" data-toggle="tab" href="#mr-pending-pane" role="tab" aria-controls="mr-pending-pane" aria-selected="true">Pending</a></li>
+                  <li class="nav-item"><a class="nav-link" id="mr-approved-tab" data-toggle="tab" href="#mr-approved-pane" role="tab" aria-controls="mr-approved-pane" aria-selected="false">Approved</a></li>
+                  <li class="nav-item"><a class="nav-link" id="mr-claimed-tab" data-toggle="tab" href="#mr-claimed-pane" role="tab" aria-controls="mr-claimed-pane" aria-selected="false">Claimed</a></li>
+                  <li class="nav-item"><a class="nav-link" id="mr-cancelled-tab" data-toggle="tab" href="#mr-cancelled-pane" role="tab" aria-controls="mr-cancelled-pane" aria-selected="false">Cancelled</a></li>
+                </ul>
+              </div>
               <div class="card-body p-3">
-                <div class="table-responsive">
-                  <table class="table table-bordered table-striped m-0" id="or-list">
-  <thead>
-    <tr>
-      <th>MR No.</th>
-      <th>MR Date</th>
-      <th>Project</th>
-      <th>Prepared By</th>
-      <th>Grand Total</th>
-      <th>Status</th>
-      <th>Action</th>
-    </tr>
-  </thead>
-</table>
+                <div class="tab-content" id="materialRequestTabContent">
+                  <?php foreach (['pending' => 'or-list', 'approved' => 'or-approved-list', 'claimed' => 'or-claimed-list', 'cancelled' => 'or-cancelled-list'] as $mrTab => $mrTableId): ?>
+                    <div class="tab-pane fade<?= $mrTab === 'pending' ? ' show active' : '' ?>" id="mr-<?= $mrTab ?>-pane" role="tabpanel" aria-labelledby="mr-<?= $mrTab ?>-tab">
+                      <div class="table-responsive">
+                        <table class="table table-bordered table-striped m-0" id="<?= $mrTableId ?>">
+                          <thead><tr>
+                            <th>MR No.</th><th>MR Date</th><th>Project</th><th>Prepared By</th><th>Grand Total</th><th>Status</th><th>Action</th>
+                          </tr></thead>
+                        </table>
+                      </div>
+                    </div>
+                  <?php endforeach; ?>
                 </div>
-                <!-- /.table-responsive -->
               </div>
               <!-- /.card-body -->
               <div class="card-footer clearfix">
@@ -3456,7 +3467,14 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <script src="dist/js/pages/dashboard2.js"></script>
 
 <script>
-let ortable, itemspo, stocktable, inventorytable, invInHistoryTable, invOutHistoryTable, inventoryMonthlySummaryTable, projecttable, projectMrReportTable, managerMonthlyProjectTable, adminManagerReportTable, supplierTable, purchaseRequestTable, inventoryPurchaseRequestTable, inventoryPoRequestedTable, purchaseOrderTable, userTable, auditLogTable;
+let itemspo, stocktable, inventorytable, invInHistoryTable, invOutHistoryTable, inventoryMonthlySummaryTable, projecttable, projectMrReportTable, managerMonthlyProjectTable, adminManagerReportTable, supplierTable, purchaseRequestTable, inventoryPurchaseRequestTable, inventoryPoRequestedTable, purchaseOrderTable, userTable, auditLogTable;
+const materialRequestTables = {};
+const materialRequestTableIds = { pending: 'or-list', approved: 'or-approved-list', claimed: 'or-claimed-list', cancelled: 'or-cancelled-list' };
+function reloadMaterialRequestTables() {
+    Object.values(materialRequestTables).forEach(function(table) {
+        window.reloadDataTable(table);
+    });
+}
 let myGeneratedPrTable;
 let encodePrItemsCache = {};
 let pendingEncodeAfterProductSave = null;
@@ -4371,13 +4389,16 @@ $(document).ready(function() {
         });
     }
 
-    function initOrderSection() {
-        if (!ortable && $('#or-list').length) {
-            ortable = $('#or-list').DataTable({
-                ajax:'ajax/fetch_or.php',
+    function initMaterialRequestTable(status) {
+        if (materialRequestTables[status] || !materialRequestTableIds[status]) return materialRequestTables[status];
+        const $table = $('#' + materialRequestTableIds[status]);
+        if (!$table.length) return null;
+        materialRequestTables[status] = $table.DataTable({
+                ajax: 'ajax/fetch_or.php?status=' + encodeURIComponent(status),
                 responsive: true,
                 autoWidth: false,
                 ordering: true,
+                order: [],
                 columns: [
                     { data: 'or_no' },
                     { data: 'or_date' },
@@ -4388,7 +4409,22 @@ $(document).ready(function() {
                     { data: 'action' }
                 ]
             });
-        }
+        return materialRequestTables[status];
+    }
+
+    $(document).on('shown.bs.tab', '#materialRequestTabs a[data-toggle="tab"]', function() {
+        const status = this.id.replace(/^mr-|-tab$/g, '');
+        const existing = materialRequestTables[status];
+        const table = initMaterialRequestTable(status);
+        if (!table) return;
+        table.columns.adjust();
+        if (table.responsive) table.responsive.recalc();
+        if (existing) table.ajax.reload(null, false);
+    });
+
+    function initOrderSection() {
+        const activeStatus = $('#materialRequestTabs .nav-link.active').attr('id')?.replace(/^mr-|-tab$/g, '') || 'pending';
+        initMaterialRequestTable(activeStatus);
 
         if (!myGeneratedPrTable && $('#my-generated-pr-list').length) {
             myGeneratedPrTable = $('#my-generated-pr-list').DataTable({
@@ -4425,7 +4461,7 @@ $(document).ready(function() {
             case 'order':
                 initOrderSection();
                 if (refresh) {
-                    reloadDataTable(ortable);
+                    reloadMaterialRequestTables();
                     reloadDataTable(myGeneratedPrTable);
                 }
                 $(document).trigger('material-request-section-opened');
@@ -5297,7 +5333,7 @@ $("#orForm").on("submit", function(e) {
          $("#orForm")[0].reset();
         $("#orItemsTable tbody").html("");
         $("#grandTotal").val("0.00");
-		reloadDataTable(ortable);
+		reloadMaterialRequestTables();
         reloadDataTable(itemspo);
         if (purchaseRequestTable) {
           reloadDataTable(purchaseRequestTable);
@@ -5360,7 +5396,7 @@ $(document).on("click", "#approveOrBtn", function(e) {
         enforceInventoryMaterialRequestReadonly();
         $("#addItemRow").show();
         $("#saveorBtn").show().html('<i class="fas fa-save"></i> Save MR');
-        reloadDataTable(ortable);
+        reloadMaterialRequestTables();
         reloadDataTable(stocktable);
         reloadDataTable(inventorytable);
         reloadDataTable(invOutHistoryTable);
@@ -5395,7 +5431,7 @@ $(document).on("click", ".claim-or", function(e) {
     success: function(res) {
       if (res.status === "success") {
         toastr.success(res.message);
-        reloadDataTable(ortable);
+        reloadMaterialRequestTables();
       } else {
         toastr.error(res.message || "Claim failed.");
       }
@@ -5428,7 +5464,7 @@ $(document).on("click", ".delete-or", function(e) {
     success: function(res) {
       if (res.status === "success") {
         toastr.success(res.message || "Material request deleted.");
-        reloadDataTable(ortable);
+        reloadMaterialRequestTables();
       } else {
         toastr.error(res.message || "Delete failed.");
       }

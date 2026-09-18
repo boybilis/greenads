@@ -10,23 +10,33 @@ if (!isset($_SESSION['user_code'])) {
     exit;
 }
 
-if (isset($_SESSION['user_dept']) && $_SESSION['user_dept'] === 'Project') {
-    $stmt = $pdo->prepare("
-        SELECT o.*, p.proj_name
-        FROM tbl_or o
-        LEFT JOIN tbl_project p ON p.proj_code = o.proj_code
-        WHERE o.user_code = ?
-        ORDER BY o.or_id DESC
-    ");
-    $stmt->execute([$_SESSION['user_code']]);
-} else {
-    $stmt = $pdo->query("
-        SELECT o.*, p.proj_name
-        FROM tbl_or o
-        LEFT JOIN tbl_project p ON p.proj_code = o.proj_code
-        ORDER BY o.or_id DESC
-    ");
+$statusFilters = ['pending' => 0, 'approved' => 1, 'cancelled' => 2, 'claimed' => 3];
+$statusFilter = $_GET['status'] ?? '';
+if (!is_string($statusFilter) || ($statusFilter !== '' && !array_key_exists($statusFilter, $statusFilters))) {
+    http_response_code(400);
+    echo json_encode(['data' => [], 'message' => 'Invalid status filter.']);
+    exit;
 }
+
+$conditions = [];
+$params = [];
+if (isset($_SESSION['user_dept']) && $_SESSION['user_dept'] === 'Project') {
+    $conditions[] = 'o.user_code = ?';
+    $params[] = $_SESSION['user_code'];
+}
+if ($statusFilter !== '') {
+    $conditions[] = 'o.or_status = ?';
+    $params[] = $statusFilters[$statusFilter];
+}
+$where = $conditions ? 'WHERE ' . implode(' AND ', $conditions) : '';
+$stmt = $pdo->prepare("
+    SELECT o.*, p.proj_name
+    FROM tbl_or o
+    LEFT JOIN tbl_project p ON p.proj_code = o.proj_code
+    $where
+    ORDER BY o.or_id DESC
+");
+$stmt->execute($params);
 
 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
