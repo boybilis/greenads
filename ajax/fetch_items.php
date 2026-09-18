@@ -47,8 +47,14 @@ if ($qty > $reorderLevel) {
 }
 
         $description = !empty($row['description']) ? $row['description'] : '-';
+        $itemDisplay = htmlspecialchars((string)($row['material_name'] ?? '-'), ENT_QUOTES, 'UTF-8')
+            . '<br><small style="color:#000">' . htmlspecialchars((string)$description, ENT_QUOTES, 'UTF-8') . '</small>';
         $unit = $row['unit'] ?? '';
         $quantity = number_format($qty, 2) . ' ' . htmlspecialchars($unit);
+        $unitPrice = (float)($row['unit_price'] ?? 0);
+        $unitPriceDisplay = $unitPrice > 0
+            ? 'PHP ' . number_format($unitPrice, 2)
+            : '<span class="status-capsule status-danger">Not Priced</span>';
 		
 		if ($_SESSION['user_type'] !== 'Manager') { 
 
@@ -71,10 +77,10 @@ if ($qty > $reorderLevel) {
 
         $data[] = [
             $row['sku'],
-            $row['material_name'],
-            $description,
+            $itemDisplay,
             $row['color'],
             $quantity,
+            $unitPriceDisplay,
             $status,
             $action
         ];

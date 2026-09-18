@@ -1272,10 +1272,10 @@ if (!isset($_SESSION['user_type']) ||
   <thead>
     <tr>
       <th>SKU</th>
-      <th>Item Name</th>
-      <th>Description</th>
+      <th>Item Name / Description</th>
       <th>Color</th>
       <th>Quantity</th>
+      <th>Unit Price</th>
       <th>Status</th>
       <th>Action</th>
     </tr>
