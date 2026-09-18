@@ -226,14 +226,16 @@ tr.pending-approval-row td {
 }
 
 #inventoryPrTabs,
-#materialRequestTabs {
+#materialRequestTabs,
+#projectTabs {
   border-bottom: 0;
   gap: 8px;
   padding: 10px 12px;
 }
 
 #inventoryPrTabs .nav-link,
-#materialRequestTabs .nav-link {
+#materialRequestTabs .nav-link,
+#projectTabs .nav-link {
   background: #e9ecef;
   border: 1px solid #ced4da;
   border-radius: 12px !important;
@@ -245,14 +247,16 @@ tr.pending-approval-row td {
 }
 
 #inventoryPrTabs .nav-link:hover,
-#materialRequestTabs .nav-link:hover {
+#materialRequestTabs .nav-link:hover,
+#projectTabs .nav-link:hover {
   background: #dfe4e8;
   border-color: #adb5bd;
   color: #212529;
 }
 
 #inventoryPrTabs .nav-link.active,
-#materialRequestTabs .nav-link.active {
+#materialRequestTabs .nav-link.active,
+#projectTabs .nav-link.active {
   background: #007bff;
   border-color: #007bff !important;
   border-bottom-color: #007bff !important;
@@ -262,12 +266,14 @@ tr.pending-approval-row td {
 
 @media (max-width: 575.98px) {
   #inventoryPrTabs .nav-item,
-  #materialRequestTabs .nav-item {
+  #materialRequestTabs .nav-item,
+  #projectTabs .nav-item {
     flex: 1 1 100%;
   }
 
   #inventoryPrTabs .nav-link,
-  #materialRequestTabs .nav-link {
+  #materialRequestTabs .nav-link,
+  #projectTabs .nav-link {
     text-align: center;
   }
 }
@@ -1081,30 +1087,28 @@ if (!isset($_SESSION['user_type']) ||
                
               </div>
               <!-- /.card-header -->
+              <div class="card-header p-0 border-bottom-0 bg-light">
+                <ul class="nav nav-tabs" id="projectTabs" role="tablist">
+                  <li class="nav-item"><a class="nav-link active" id="project-pending-tab" data-toggle="tab" href="#project-pending-pane" role="tab" aria-controls="project-pending-pane" aria-selected="true">Pending</a></li>
+                  <li class="nav-item"><a class="nav-link" id="project-ongoing-tab" data-toggle="tab" href="#project-ongoing-pane" role="tab" aria-controls="project-ongoing-pane" aria-selected="false">Approved Ongoing</a></li>
+                  <li class="nav-item"><a class="nav-link" id="project-completed-tab" data-toggle="tab" href="#project-completed-pane" role="tab" aria-controls="project-completed-pane" aria-selected="false">Approved Completed</a></li>
+                </ul>
+              </div>
               <div class="card-body p-3">
-                <div class="table-responsive">
-                  <table class="table m-0" id="project-list">
-    <thead>
-        <tr>
-            <th>Action</th>
-            <th>Attachments</th>
-            <th>Approval</th>
-            <th>Status</th>
-            <th>Project Name</th>
-            <th>Project Manager</th>
-            <th>Project Cost</th>
-            <th>Description</th>
-            <th>Start Date</th>
-            <th>End Date</th>
-        </tr>
-    </thead>
-
-    <tbody>
-        <!-- AJAX or PHP rows here -->
-    </tbody>
-</table>
+                <div class="tab-content" id="projectTabContent">
+                  <?php foreach (['pending' => 'project-list', 'ongoing' => 'project-ongoing-list', 'completed' => 'project-completed-list'] as $projectTab => $projectTableId): ?>
+                    <div class="tab-pane fade<?= $projectTab === 'pending' ? ' show active' : '' ?>" id="project-<?= $projectTab ?>-pane" role="tabpanel" aria-labelledby="project-<?= $projectTab ?>-tab">
+                      <div class="table-responsive">
+                        <table class="table m-0" id="<?= $projectTableId ?>">
+                          <thead><tr>
+                            <th>Action</th><th>Attachments</th><th>Approval</th><th>Status</th><th>Project Name</th><th>Project Manager</th><th>Project Cost</th><th>Description</th><th>Start Date</th><th>End Date</th>
+                          </tr></thead>
+                          <tbody></tbody>
+                        </table>
+                      </div>
+                    </div>
+                  <?php endforeach; ?>
                 </div>
-                <!-- /.table-responsive -->
               </div>
               <!-- /.card-body -->
               <div class="card-footer clearfix">
@@ -1590,7 +1594,9 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
   <i class="fas fa-check"></i> Approve MR
 </button>
   
-  
+    <button type="button" class="btn btn-outline-secondary mr-2" id="clearOrFormBtn">
+      <i class="fas fa-eraser"></i> Clear Form
+    </button>
     <button type="submit" class="btn btn-success" id="saveorBtn">
       <i class="fas fa-save"></i> Save MR
     </button>
@@ -3468,6 +3474,13 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 <script>
 let itemspo, stocktable, inventorytable, invInHistoryTable, invOutHistoryTable, inventoryMonthlySummaryTable, projecttable, projectMrReportTable, managerMonthlyProjectTable, adminManagerReportTable, supplierTable, purchaseRequestTable, inventoryPurchaseRequestTable, inventoryPoRequestedTable, purchaseOrderTable, userTable, auditLogTable;
+const projectTables = {};
+const projectTableIds = { pending: 'project-list', ongoing: 'project-ongoing-list', completed: 'project-completed-list' };
+function reloadProjectTables() {
+    Object.values(projectTables).forEach(function(table) {
+        window.reloadDataTable(table);
+    });
+}
 const materialRequestTables = {};
 const materialRequestTableIds = { pending: 'or-list', approved: 'or-approved-list', claimed: 'or-claimed-list', cancelled: 'or-cancelled-list' };
 function reloadMaterialRequestTables() {
@@ -4243,25 +4256,24 @@ $(document).ready(function() {
 			$('.inv-out-item-dropdown').hide();
 		}
 	});
-	function initProjectSection() {
-        if (projecttable || !$('#project-list').length) {
-            return;
-        }
+	function initProjectTable(status) {
+        if (projectTables[status] || !projectTableIds[status]) return projectTables[status];
+        const $table = $('#' + projectTableIds[status]);
+        if (!$table.length) return null;
 
-        projecttable = $('#project-list').DataTable({
+        projectTables[status] = $table.DataTable({
             ajax: {
-                url: 'ajax/fetch_projects.php',
+                url: 'ajax/fetch_projects.php?status=' + encodeURIComponent(status),
                 type: 'GET',
                 dataSrc: function (json) {
                     const rows = Array.isArray(json) ? json : [];
-                    const pendingCount = rows.filter(function (r) {
-                        return parseInt(r.proj_approval_status, 10) !== 1;
-                    }).length;
-                    const $counter = $('#projectApprovalCounter');
-                    if (pendingCount > 0) {
-                        $counter.text(pendingCount + ' Pending Approval').removeClass('d-none');
-                    } else {
-                        $counter.addClass('d-none');
+                    if (status === 'pending') {
+                        const $counter = $('#projectApprovalCounter');
+                        if (rows.length > 0) {
+                            $counter.text(rows.length + ' Pending Approval').removeClass('d-none');
+                        } else {
+                            $counter.addClass('d-none');
+                        }
                     }
                     return rows;
                 }
@@ -4387,6 +4399,23 @@ $(document).ready(function() {
                 }
             }
         });
+        if (status === 'pending') projecttable = projectTables[status];
+        return projectTables[status];
+    }
+
+    $(document).on('shown.bs.tab', '#projectTabs a[data-toggle="tab"]', function() {
+        const status = this.id.replace(/^project-|-tab$/g, '');
+        const existing = projectTables[status];
+        const table = initProjectTable(status);
+        if (!table) return;
+        table.columns.adjust();
+        if (table.responsive) table.responsive.recalc();
+        if (existing) table.ajax.reload(null, false);
+    });
+
+    function initProjectSection() {
+        const activeStatus = $('#projectTabs .nav-link.active').attr('id')?.replace(/^project-|-tab$/g, '') || 'pending';
+        initProjectTable(activeStatus);
     }
 
     function initMaterialRequestTable(status) {
@@ -4449,7 +4478,7 @@ $(document).ready(function() {
         switch (target) {
             case 'project':
                 initProjectSection();
-                if (refresh) reloadDataTable(projecttable);
+                if (refresh) reloadProjectTables();
                 break;
             case 'product':
                 initProductSection();
@@ -4991,6 +5020,30 @@ $('#material_name, #color, #gsm').on('input blur', buildSkuPreview);
 <script>
 $(document).ready(function () {
     let itemIndex = 1;
+    const initialMaterialRequestRow = $('#orItemsTable tbody tr:first').clone();
+
+    $('#clearOrFormBtn').on('click', function() {
+        const form = $('#orForm')[0];
+        if (!form) return;
+
+        form.reset();
+        $('#or_id, #orForm input[name="or_no"]').val('');
+        $('#orItemsTable tbody').empty().append(initialMaterialRequestRow.clone());
+        $('#grandTotal').val('0.00');
+        itemIndex = 1;
+
+        $('#orForm input, #orForm textarea, #orForm select').prop('readonly', false);
+        $('#orForm select').prop('disabled', false);
+        $('#orForm input[name="or_no"], #orForm input[name="dept_code"], #orForm .sku, #orForm .amount, #grandTotal').prop('readonly', true);
+        if (<?= json_encode(($_SESSION['user_type'] ?? '') === 'Inventory'); ?>) {
+            $('#or_date').prop('readonly', true);
+            $('#proj_code').prop('disabled', true);
+        }
+
+        $('#approveOrBtn').hide().removeData('id');
+        $('#addItemRow').show();
+        $('#saveorBtn').show().html('<i class="fas fa-save"></i> Save MR');
+    });
     let itemsList = [];
     let itemsListLoadedAt = 0;
     let itemsListRequest = null;
@@ -5880,7 +5933,7 @@ $('#project-form').on('submit', function(e){
             if(res.status === 'success'){
                 toastr.success(res.message);
                 resetProjectForm();
-                reloadDataTable(projecttable);
+                reloadProjectTables();
             } else {
                 toastr.error(res.message);
             }
@@ -5913,7 +5966,7 @@ $(document).on('click', '.approve-project-btn', function() {
         success: function(res) {
             if (res.status === 'success') {
                 toastr.success(res.message);
-                reloadDataTable(projecttable);
+                reloadProjectTables();
             } else {
                 toastr.error(res.message || 'Approval failed.');
             }
@@ -5948,7 +6001,7 @@ $(document).on('click', '.complete-project-btn', function() {
         success: function(response) {
             if (response.status === 'success') {
                 toastr.success(response.message || 'Project marked as completed.');
-                reloadDataTable(projecttable);
+                reloadProjectTables();
             } else {
                 toastr.error(response.message || 'Unable to complete project.');
             }
@@ -5993,7 +6046,7 @@ $(document).on('click', '.delete-project-btn', function() {
         success: function(res) {
             if (res.status === 'success') {
                 toastr.success(res.message);
-                reloadDataTable(projecttable);
+                reloadProjectTables();
             } else {
                 toastr.error(res.message || 'Project deletion failed.');
             }

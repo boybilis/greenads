@@ -32,13 +32,33 @@ try {
     ";
 
     $params = [];
+    $conditions = [];
 
     // =========================
     // ROLE FILTER
     // =========================
     if ($type !== 'Admin') {
-        $sql .= " WHERE p.proj_mgr = ? ";
+        $conditions[] = 'p.proj_mgr = ?';
         $params[] = $user;
+    }
+
+    $statusFilter = $_GET['status'] ?? '';
+    if (!is_string($statusFilter) || !in_array($statusFilter, ['', 'pending', 'ongoing', 'completed'], true)) {
+        http_response_code(400);
+        echo json_encode([]);
+        exit;
+    }
+    if ($statusFilter === 'pending') {
+        $conditions[] = "$approvalSelect <> 1";
+    } elseif ($statusFilter === 'ongoing') {
+        $conditions[] = "$approvalSelect = 1";
+        $conditions[] = 'p.proj_status = 0';
+    } elseif ($statusFilter === 'completed') {
+        $conditions[] = "$approvalSelect = 1";
+        $conditions[] = 'p.proj_status = 1';
+    }
+    if ($conditions) {
+        $sql .= ' WHERE ' . implode(' AND ', $conditions);
     }
 
     if ($hasApprovalColumn) {
