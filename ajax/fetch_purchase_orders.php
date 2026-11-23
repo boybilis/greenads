@@ -148,6 +148,7 @@ try {
         if ($isAdminUser) {
             $action = '<a href="purchase_order_print?po_id=' . (int)$row['po_id'] . '" target="_blank"><span class="badge badge-info">View</span></a>';
             if (!$isApproved) {
+                $action .= ' | <a href="#" class="edit-po-request" data-id="' . (int)$row['po_id'] . '"><span class="badge badge-info">Edit</span></a>';
                 $action .= ' | <a href="#" class="approve-po" data-id="' . (int)$row['po_id'] . '" data-ref="' . htmlspecialchars($poRefNo) . '"><span class="badge badge-primary">Approve PO</span></a>';
                 $action .= ' | <a href="#" class="cancel-po-request" data-id="' . (int)$row['po_id'] . '" data-ref="' . htmlspecialchars($poRefNo) . '"><span class="badge badge-warning">Cancel</span></a>';
             }

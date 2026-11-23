@@ -10,9 +10,9 @@ if (!isset($_SESSION['user_code'])) {
     echo json_encode(['status' => 'error', 'message' => 'Session expired. Please log in again.']);
     exit;
 }
-if (($_SESSION['user_type'] ?? '') !== 'Purchasing') {
+if (!in_array($_SESSION['user_type'] ?? '', ['Admin', 'Purchasing'], true)) {
     http_response_code(403);
-    echo json_encode(['status' => 'error', 'message' => 'Only purchasing can edit a PO request.']);
+    echo json_encode(['status' => 'error', 'message' => 'Only admin or purchasing can edit a PO request.']);
     exit;
 }
 
