@@ -3320,7 +3320,7 @@ $projs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
       <!-- Header -->
       <div class="modal-header">
-        <h5 class="modal-title">Create Purchase Order</h5>
+        <h5 class="modal-title" id="poModalTitle">Create Purchase Order</h5>
         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
           <span aria-hidden="true">&times;</span>
         </button>
@@ -6900,9 +6900,12 @@ function openPoModalForPrIds(prIds) {
         </tr>
     `);
     $('#supplierSelect').val('');
+    $('#poModalTitle').text('Create Purchase Order');
+    $('#savePoBtn').html('Save PO');
     $('#poModal').modal('show');
     $('#poModal').data('pr-ids', prIds);
     $('#poModal').removeData('pr-id');
+    $('#poModal').removeData('po-id');
     $('#poPrRef').text('Loading...');
 
     const requests = prIds.map(function(prId) {
@@ -6997,6 +7000,56 @@ $(document).on('click', '#createSelectedPoBtn', function(e) {
     openPoModalForPrIds(prIds);
 });
 
+$(document).on('click', '.edit-po-request', function(e) {
+    e.preventDefault();
+    const poId = Number($(this).data('id') || 0);
+    if (!poId) {
+        toastr.error('Invalid PO reference.');
+        return;
+    }
+
+    $.ajax({
+        url: 'ajax/fetch_purchase_order_details.php',
+        type: 'GET',
+        dataType: 'json',
+        data: { po_id: poId },
+        success: function(res) {
+            if (res.status !== 'success' || !res.purchase_order) {
+                toastr.error(res.message || 'Unable to load PO request.');
+                return;
+            }
+            const po = res.purchase_order;
+            if (String(po.approval_status || '').toLowerCase() === 'approved') {
+                toastr.warning('Admin must undo PO approval before Purchasing can edit it.');
+                return;
+            }
+            let html = '';
+            (po.items || []).forEach(function(item) {
+                const totalPrice = Number(item.po_qty || 0) * Number(item.unit_price || 0);
+                html += `
+                    <tr data-po-item-id="${Number(item.po_item_id || 0)}" data-sku="${escapeHtml(item.sku || '')}">
+                        <td><span class="badge badge-light">${escapeHtml(item.pr_ref_no || '-')}</span><br><strong>${escapeHtml(item.item_name || '')}</strong><br><small class="text-muted">${escapeHtml(item.description || '')}</small><br><small>SKU: ${escapeHtml(item.sku || '')} | Color: ${escapeHtml(item.color || 'N/A')}</small></td>
+                        <td>${formatPoQty(item.request_qty)} ${escapeHtml(item.unit || '')}</td>
+                        <td><input type="number" class="form-control po-qty" value="${Number(item.po_qty || 0)}" min="0.01" step="0.01"></td>
+                        <td><input type="number" class="form-control po-unit-price-input text-right" value="${Number(item.unit_price || 0).toFixed(2)}" min="0" step="0.01"></td>
+                        <td class="text-right po-total-price">${formatPoQty(totalPrice)}</td>
+                    </tr>`;
+            });
+            $('#poModalTitle').text('Edit ' + (po.po_ref_no || 'Purchase Order'));
+            $('#supplierSelect').val(String(po.supplier?.supplier_id || ''));
+            $('#poPrRef').text(po.pr_ref_no || '-');
+            $('#poItemsBody').html(html || '<tr><td colspan="5" class="text-center text-danger">No PO items found.</td></tr>');
+            $('#poModal').data('po-id', poId).removeData('pr-ids').removeData('pr-id');
+            $('#savePoBtn').html('Update PO');
+            updatePoGrandTotal();
+            $('#poModal').modal('show');
+        },
+        error: function(xhr) {
+            toastr.error(xhr.responseJSON?.message || 'Unable to load PO request.');
+        }
+    });
+});
+
 $(document).on('change', '#selectAllPrForPo', function() {
     $('.select-pr-for-po:not(:disabled)').prop('checked', this.checked);
 });
@@ -7083,11 +7136,12 @@ function printPurchaseOrder(po, previewWin) {
 }
 
 $(document).on('click', '#savePoBtn', function () {
+    const poId = Number($('#poModal').data('po-id') || 0);
     const prIds = ($('#poModal').data('pr-ids') || []).map(Number).filter(Boolean);
     const supplierId = $('#supplierSelect').val();
     const items = [];
 
-    if (prIds.length === 0) {
+    if (!poId && prIds.length === 0) {
         toastr.error('Invalid PR reference.');
         return;
     }
@@ -7101,10 +7155,13 @@ $(document).on('click', '#savePoBtn', function () {
         const sku = $(this).data('sku');
         const prItemId = Number($(this).data('pr-item-id') || 0);
         const prId = Number($(this).data('pr-id') || 0);
+        const poItemId = Number($(this).data('po-item-id') || 0);
         const poQty = Number($(this).find('.po-qty').val() || 0);
         const unitPrice = Number($(this).find('.po-unit-price-input').val() || 0);
 
-        if (sku && prItemId && prId && poQty > 0) {
+        if (poId && poItemId && poQty > 0) {
+            items.push({ po_item_id: poItemId, po_qty: poQty, unit_price: unitPrice });
+        } else if (!poId && sku && prItemId && prId && poQty > 0) {
             items.push({
                 pr_id: prId,
                 pr_item_id: prItemId,
@@ -7123,10 +7180,11 @@ $(document).on('click', '#savePoBtn', function () {
     const $btn = $('#savePoBtn');
 
     $.ajax({
-        url: 'ajax/save_purchase_order.php',
+        url: poId ? 'ajax/update_purchase_order.php' : 'ajax/save_purchase_order.php',
         type: 'POST',
         dataType: 'json',
         data: {
+            po_id: poId,
             pr_ids: JSON.stringify(prIds),
             supplier_id: supplierId,
             items: JSON.stringify(items)
@@ -7136,7 +7194,7 @@ $(document).on('click', '#savePoBtn', function () {
         },
         success: function(res) {
             if (res.status === 'success') {
-                toastr.success(res.message || 'Purchase order saved.');
+                toastr.success(res.message || (poId ? 'Purchase order updated.' : 'Purchase order saved.'));
                 $('#poModal').modal('hide');
                 if (purchaseRequestTable) {
                     reloadDataTable(purchaseRequestTable);
@@ -7154,9 +7212,15 @@ $(document).on('click', '#savePoBtn', function () {
             toastr.error('Failed to save purchase order.');
         },
         complete: function() {
-            $btn.prop('disabled', false).html('Save PO');
+            $btn.prop('disabled', false).html(poId ? 'Update PO' : 'Save PO');
         }
     });
+});
+
+$('#poModal').on('hidden.bs.modal', function() {
+    $(this).removeData('po-id').removeData('pr-ids').removeData('pr-id');
+    $('#poModalTitle').text('Create Purchase Order');
+    $('#savePoBtn').html('Save PO');
 });
 
 $(document).on('click', '.fulfill-po', function(e) {
@@ -7296,6 +7360,40 @@ $(document).on('click', '.approve-po', function(e) {
         error: function(xhr) {
             console.error(xhr.responseText);
             toastr.error('Failed to approve PO.');
+        }
+    });
+});
+
+$(document).on('click', '.undo-po-approval', function(e) {
+    e.preventDefault();
+    const poId = Number($(this).data('id') || 0);
+    const poRef = String($(this).data('ref') || '');
+    if (!poId) {
+        toastr.error('Invalid PO reference.');
+        return;
+    }
+    if (!confirm('Undo approval for ' + poRef + '? Purchasing will be able to edit and resubmit this PO.')) {
+        return;
+    }
+
+    $.ajax({
+        url: 'ajax/undo_purchase_order_approval.php',
+        type: 'POST',
+        dataType: 'json',
+        data: { po_id: poId },
+        success: function(res) {
+            if (res.status === 'success') {
+                toastr.success(res.message || 'PO approval was undone.');
+                reloadPurchaseOrderTables();
+                reloadGeneratedPrTables();
+                if (inventoryPurchaseRequestTable) reloadDataTable(inventoryPurchaseRequestTable);
+                if (inventoryPoRequestedTable) reloadDataTable(inventoryPoRequestedTable);
+            } else {
+                toastr.error(res.message || 'Unable to undo PO approval.');
+            }
+        },
+        error: function(xhr) {
+            toastr.error(xhr.responseJSON?.message || 'Unable to undo PO approval.');
         }
     });
 });

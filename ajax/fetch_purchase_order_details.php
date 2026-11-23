@@ -76,6 +76,8 @@ try {
 
     $itemStmt = $pdo->prepare("
         SELECT
+            poi.po_item_id,
+            poi.pr_item_id,
             poi.sku,
             COALESCE(poi.pr_ref_no, pr.pr_ref_no) AS pr_ref_no,
             poi.item_name,
@@ -99,6 +101,8 @@ try {
     $items = [];
     while ($row = $itemStmt->fetch(PDO::FETCH_ASSOC)) {
         $items[] = [
+            'po_item_id' => (int)$row['po_item_id'],
+            'pr_item_id' => (int)$row['pr_item_id'],
             'sku' => $row['sku'],
             'pr_ref_no' => $row['pr_ref_no'] ?: '-',
             'item_name' => $row['item_name'],

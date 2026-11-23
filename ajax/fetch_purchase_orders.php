@@ -153,6 +153,7 @@ try {
             }
             if ($isApproved && !$isVerified) {
                 $action .= ' | <a href="#" class="fulfill-po" data-id="' . (int)$row['po_id'] . '" data-ref="' . htmlspecialchars($poRefNo) . '" data-action-label="Fulfill"><span class="badge badge-warning">Fulfill</span></a>';
+                $action .= ' | <a href="#" class="undo-po-approval" data-id="' . (int)$row['po_id'] . '" data-ref="' . htmlspecialchars($poRefNo) . '"><span class="badge badge-secondary">Undo Approval</span></a>';
             }
             if ($isApproved && !$isVerified) {
                 $action .= ' | <a href="#" class="delete-po-request" data-id="' . (int)$row['po_id'] . '"><span class="badge badge-danger">Delete</span></a>';
@@ -167,6 +168,7 @@ try {
             } else {
                 $action = '<span class="status-capsule status-warning">PO for Approval</span>';
                 if (($_SESSION['user_type'] ?? '') === 'Purchasing') {
+                    $action .= ' | <a href="#" class="edit-po-request" data-id="' . (int)$row['po_id'] . '"><span class="badge badge-info">Edit</span></a>';
                     $action .= ' | <a href="#" class="cancel-po-request" data-id="' . (int)$row['po_id'] . '" data-ref="' . htmlspecialchars($poRefNo) . '"><span class="badge badge-warning">Cancel</span></a>';
                 }
             }
